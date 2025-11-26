@@ -1,0 +1,13 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/admin/settings/page": "app/admin/settings/page.js",
+  "/admin/users/page": "app/admin/users/page.js",
+  "/billing/invoices/page": "app/billing/invoices/page.js",
+  "/billing/payments/page": "app/billing/payments/page.js",
+  "/inventory/page": "app/inventory/page.js",
+  "/medical/case-files/page": "app/medical/case-files/page.js",
+  "/medical/patients/page": "app/medical/patients/page.js",
+  "/page": "app/page.js",
+  "/pharmacy/page": "app/pharmacy/page.js",
+  "/reports/page": "app/reports/page.js"
+}
