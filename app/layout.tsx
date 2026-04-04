@@ -2,6 +2,7 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Roboto, Roboto_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
+import { AuthProvider } from "@/lib/context/auth-context"
 import "./globals.css"
 
 // Configuración con Roboto - clásica y profesional
@@ -47,7 +48,9 @@ export default function RootLayout({
   return (
     <html lang="es" className={`${roboto.variable} ${robotoMono.variable}`}>
       <body className={`font-sans antialiased`}>
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
         {/*<Analytics />*/}
       </body>
     </html>

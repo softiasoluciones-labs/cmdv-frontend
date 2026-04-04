@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useCallback } from "react"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -9,9 +9,11 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { users, type User } from "@/lib/mock-data"
-import { Search, Plus, Users, Shield, UserCheck, UserX, Edit, Trash2, Key } from "lucide-react"
+import { Search, Plus, Users, Shield, UserCheck, UserX, Edit, Trash2, Key, Loader2, AlertCircle, RefreshCw } from "lucide-react"
 import { UserForm } from "@/components/admin/user-form"
+import { useUsers } from "@/hooks/use-users"
+import { ApiUser, UserRole, UsersQueryParams } from "@/lib/api"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 const roleConfig: Record<string, { label: string; className: string }> = {
   admin: { label: "Administrador", className: "bg-destructive/10 text-destructive" },
@@ -32,29 +34,76 @@ export default function UsersPage() {
   const [search, setSearch] = useState("")
   const [roleFilter, setRoleFilter] = useState<string>("all")
   const [statusFilter, setStatusFilter] = useState<string>("all")
-  const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [selectedUser, setSelectedUser] = useState<ApiUser | null>(null)
   const [showForm, setShowForm] = useState(false)
+  const [isDeleting, setIsDeleting] = useState<string | null>(null)
 
+  const { users, stats, isLoading, error, fetchUsers, refetch, deleteUser } = useUsers()
+
+  // Handle filter changes
+  const handleFiltersChange = useCallback(() => {
+    const params: UsersQueryParams = {
+      search: search || undefined,
+      role: roleFilter as UserRole | "all",
+      status: statusFilter as "active" | "inactive" | "all",
+    }
+    fetchUsers(params)
+  }, [search, roleFilter, statusFilter, fetchUsers])
+
+  // Filter users locally for instant feedback (debounced API call can be added)
   const filteredUsers = useMemo(() => {
     return users.filter((user) => {
       const matchesSearch =
-        user.name.toLowerCase().includes(search.toLowerCase()) ||
-        user.email.toLowerCase().includes(search.toLowerCase())
+        user.full_name.toLowerCase().includes(search.toLowerCase()) ||
+        user.email.toLowerCase().includes(search.toLowerCase()) ||
+        user.username.toLowerCase().includes(search.toLowerCase())
       const matchesRole = roleFilter === "all" || user.role === roleFilter
       const matchesStatus =
         statusFilter === "all" ||
-        (statusFilter === "active" && user.isActive) ||
-        (statusFilter === "inactive" && !user.isActive)
+        (statusFilter === "active" && user.is_active) ||
+        (statusFilter === "inactive" && !user.is_active)
       return matchesSearch && matchesRole && matchesStatus
     })
-  }, [search, roleFilter, statusFilter])
+  }, [users, search, roleFilter, statusFilter])
 
-  const stats = useMemo(() => {
-    const active = users.filter((u) => u.isActive).length
-    const inactive = users.filter((u) => !u.isActive).length
-    const admins = users.filter((u) => u.role === "admin").length
-    return { total: users.length, active, inactive, admins }
-  }, [])
+  // Handle delete user
+  const handleDeleteUser = async (id: string) => {
+    if (!confirm("¿Estás seguro de que deseas eliminar este usuario?")) return
+
+    setIsDeleting(id)
+    await deleteUser(id)
+    setIsDeleting(null)
+  }
+
+  // Handle form close
+  const handleFormClose = () => {
+    setShowForm(false)
+    setSelectedUser(null)
+    refetch()
+  }
+
+  // Get initials from full name
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase()
+  }
+
+  // Format date
+  const formatDate = (dateString: string) => {
+    try {
+      return new Date(dateString).toLocaleDateString("es-GT", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      })
+    } catch {
+      return "N/A"
+    }
+  }
 
   return (
     <DashboardLayout>
@@ -64,28 +113,31 @@ export default function UsersPage() {
             <h1 className="text-2xl font-bold">Usuarios</h1>
             <p className="text-muted-foreground">Gestión de usuarios del sistema</p>
           </div>
-          <Dialog open={showForm} onOpenChange={setShowForm}>
-            <DialogTrigger asChild>
-              <Button className="gap-2" onClick={() => setSelectedUser(null)}>
-                <Plus className="h-4 w-4" />
-                Nuevo Usuario
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>{selectedUser ? "Editar Usuario" : "Nuevo Usuario"}</DialogTitle>
-              </DialogHeader>
-              <UserForm
-                user={selectedUser}
-                onClose={() => {
-                  setShowForm(false)
-                  setSelectedUser(null)
-                }}
-              />
-            </DialogContent>
-          </Dialog>
+          <div className="flex gap-2">
+            <Button variant="outline" size="icon" onClick={refetch} disabled={isLoading}>
+              <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+            </Button>
+            <Dialog open={showForm} onOpenChange={setShowForm}>
+              <DialogTrigger asChild>
+                <Button className="gap-2" onClick={() => setSelectedUser(null)}>
+                  <Plus className="h-4 w-4" />
+                  Nuevo Usuario
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>{selectedUser ? "Editar Usuario" : "Nuevo Usuario"}</DialogTitle>
+                </DialogHeader>
+                <UserForm
+                  user={selectedUser}
+                  onClose={handleFormClose}
+                />
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
+        {/* Stats Cards */}
         <div className="grid gap-4 sm:grid-cols-4">
           <Card>
             <CardContent className="flex items-center gap-4 p-4">
@@ -94,7 +146,7 @@ export default function UsersPage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total Usuarios</p>
-                <p className="text-2xl font-bold">{stats.total}</p>
+                <p className="text-2xl font-bold">{isLoading ? "-" : stats.totalUsers}</p>
               </div>
             </CardContent>
           </Card>
@@ -105,7 +157,7 @@ export default function UsersPage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Activos</p>
-                <p className="text-2xl font-bold text-success">{stats.active}</p>
+                <p className="text-2xl font-bold text-success">{isLoading ? "-" : stats.activeUsers}</p>
               </div>
             </CardContent>
           </Card>
@@ -116,7 +168,7 @@ export default function UsersPage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Inactivos</p>
-                <p className="text-2xl font-bold text-muted-foreground">{stats.inactive}</p>
+                <p className="text-2xl font-bold text-muted-foreground">{isLoading ? "-" : stats.inactiveUsers}</p>
               </div>
             </CardContent>
           </Card>
@@ -127,12 +179,21 @@ export default function UsersPage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Admins</p>
-                <p className="text-2xl font-bold">{stats.admins}</p>
+                <p className="text-2xl font-bold">{isLoading ? "-" : stats.admins}</p>
               </div>
             </CardContent>
           </Card>
         </div>
 
+        {/* Error Alert */}
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {/* Users Table */}
         <Card>
           <CardHeader>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -159,8 +220,7 @@ export default function UsersPage() {
                     <SelectItem value="nurse">Enfermero/a</SelectItem>
                     <SelectItem value="receptionist">Recepción</SelectItem>
                     <SelectItem value="pharmacist">Farmacia</SelectItem>
-                    <SelectItem value="billing">Facturación</SelectItem>
-                    <SelectItem value="billing_staff">Facturación Staff</SelectItem>
+                    <SelectItem value="billing_staff">Facturación</SelectItem>
                     <SelectItem value="lab_technician">Laboratorio</SelectItem>
                     <SelectItem value="warehouse_manager">Almacén</SelectItem>
                   </SelectContent>
@@ -179,78 +239,94 @@ export default function UsersPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b text-left text-sm text-muted-foreground">
-                    <th className="pb-3 font-medium">Usuario</th>
-                    <th className="pb-3 font-medium">Email</th>
-                    <th className="pb-3 font-medium">Rol</th>
-                    <th className="pb-3 font-medium">Último Acceso</th>
-                    <th className="pb-3 font-medium">Estado</th>
-                    <th className="pb-3 font-medium">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {filteredUsers.map((user) => {
-                    const config = getConfig(user.role)
-                    return (
-                      <tr key={user.id} className="hover:bg-muted/50">
-                        <td className="py-3">
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-9 w-9">
-                              <AvatarFallback className="bg-primary/10 text-primary">
-                                {user.name
-                                  .split(" ")
-                                  .map((n) => n[0])
-                                  .join("")
-                                  .slice(0, 2)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className="font-medium">{user.name}</span>
-                          </div>
-                        </td>
-                        <td className="py-3 text-sm text-muted-foreground">{user.email}</td>
-                        <td className="py-3">
-                          <Badge className={config.className}>{config.label}</Badge>
-                        </td>
-                        <td className="py-3 text-sm text-muted-foreground">
-                          {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString("es-GT") : "Nunca"}
-                        </td>
-                        <td className="py-3">
-                          <Badge variant={user.isActive ? "default" : "secondary"}>
-                            {user.isActive ? "Activo" : "Inactivo"}
-                          </Badge>
-                        </td>
-                        <td className="py-3">
-                          <div className="flex gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => {
-                                setSelectedUser(user)
-                                setShowForm(true)
-                              }}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon">
-                              <Key className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="text-destructive">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-              {filteredUsers.length === 0 && (
-                <div className="py-12 text-center text-muted-foreground">No se encontraron usuarios</div>
-              )}
-            </div>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                <span className="ml-2 text-muted-foreground">Cargando usuarios...</span>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b text-left text-sm text-muted-foreground">
+                      <th className="pb-3 font-medium">Usuario</th>
+                      <th className="pb-3 font-medium">Email</th>
+                      <th className="pb-3 font-medium">Rol</th>
+                      <th className="pb-3 font-medium">Fecha Creación</th>
+                      <th className="pb-3 font-medium">Estado</th>
+                      <th className="pb-3 font-medium">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {filteredUsers.map((user) => {
+                      const config = getConfig(user.role)
+                      return (
+                        <tr key={user.id} className="hover:bg-muted/50">
+                          <td className="py-3">
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-9 w-9">
+                                <AvatarFallback className="bg-primary/10 text-primary">
+                                  {getInitials(user.full_name)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex flex-col">
+                                <span className="font-medium">{user.full_name}</span>
+                                <span className="text-xs text-muted-foreground">@{user.username}</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 text-sm text-muted-foreground">{user.email}</td>
+                          <td className="py-3">
+                            <Badge className={config.className}>{config.label}</Badge>
+                          </td>
+                          <td className="py-3 text-sm text-muted-foreground">
+                            {formatDate(user.created_at)}
+                          </td>
+                          <td className="py-3">
+                            <Badge variant={user.is_active ? "default" : "secondary"}>
+                              {user.is_active ? "Activo" : "Inactivo"}
+                            </Badge>
+                          </td>
+                          <td className="py-3">
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  setSelectedUser(user)
+                                  setShowForm(true)
+                                }}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon">
+                                <Key className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-destructive"
+                                onClick={() => handleDeleteUser(user.id)}
+                                disabled={isDeleting === user.id}
+                              >
+                                {isDeleting === user.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+                {filteredUsers.length === 0 && !isLoading && (
+                  <div className="py-12 text-center text-muted-foreground">No se encontraron usuarios</div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

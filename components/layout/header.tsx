@@ -14,13 +14,26 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import { useAuth } from "@/hooks/use-auth"
 
 interface HeaderProps {
   sidebarCollapsed?: boolean
 }
 
 export function Header({ sidebarCollapsed }: HeaderProps) {
+  const { user, logout } = useAuth()
   const [darkMode, setDarkMode] = useState(false)
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase()
+  }
+
+  if (!user) return null
 
   const toggleDarkMode = () => {
     setDarkMode(!darkMode)
@@ -29,9 +42,8 @@ export function Header({ sidebarCollapsed }: HeaderProps) {
 
   return (
     <header
-      className={`fixed top-0 right-0 z-30 h-16 bg-card border-b border-border transition-all duration-300 ${
-        sidebarCollapsed ? "left-16" : "left-64"
-      }`}
+      className={`fixed top-0 right-0 z-30 h-16 bg-card border-b border-border transition-all duration-300 ${sidebarCollapsed ? "left-16" : "left-64"
+        }`}
     >
       <div className="flex h-full items-center justify-between px-6">
         {/* Search */}
@@ -89,11 +101,11 @@ export function Header({ sidebarCollapsed }: HeaderProps) {
               <Button variant="ghost" className="flex items-center gap-2 px-2">
                 <Avatar className="h-8 w-8">
                   <AvatarImage src="/male-doctor.png" />
-                  <AvatarFallback className="bg-primary text-primary-foreground">CM</AvatarFallback>
+                  <AvatarFallback className="bg-primary text-primary-foreground">{getInitials(user.name)}</AvatarFallback>
                 </Avatar>
                 <div className="hidden md:flex flex-col items-start">
-                  <span className="text-sm font-medium text-foreground">Dr. Carlos Mendoza</span>
-                  <span className="text-xs text-muted-foreground">Super Admin</span>
+                  <span className="text-sm font-medium text-foreground">{user.name}</span>
+                  <span className="text-xs text-muted-foreground">{user.role}</span>
                 </div>
               </Button>
             </DropdownMenuTrigger>
@@ -109,7 +121,7 @@ export function Header({ sidebarCollapsed }: HeaderProps) {
                 Configuración
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive">
+              <DropdownMenuItem className="text-destructive" onClick={logout}>
                 <LogOut className="mr-2 h-4 w-4" />
                 Cerrar Sesión
               </DropdownMenuItem>

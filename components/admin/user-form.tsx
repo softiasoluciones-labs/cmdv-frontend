@@ -8,68 +8,164 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import type { User } from "@/lib/mock-data"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Loader2, AlertCircle } from "lucide-react"
+import { ApiUser, UserRole, userService, ApiError } from "@/lib/api"
 
 interface UserFormProps {
-  user?: User | null
+  user?: ApiUser | null
   onClose: () => void
 }
 
-const roles: { value: User["role"]; label: string }[] = [
+const roles: { value: UserRole; label: string }[] = [
+  { value: "super_admin", label: "Super Admin" },
   { value: "admin", label: "Administrador" },
   { value: "doctor", label: "Médico" },
   { value: "nurse", label: "Enfermero/a" },
   { value: "receptionist", label: "Recepción" },
   { value: "pharmacist", label: "Farmacia" },
-  { value: "billing", label: "Facturación" },
+  { value: "billing_staff", label: "Facturación" },
+  { value: "lab_technician", label: "Laboratorio" },
+  { value: "warehouse_manager", label: "Almacén" },
 ]
 
 export function UserForm({ user, onClose }: UserFormProps) {
   const [formData, setFormData] = useState({
-    name: user?.name || "",
+    full_name: user?.full_name || "",
+    username: user?.username || "",
     email: user?.email || "",
-    role: user?.role || ("receptionist" as User["role"]),
-    isActive: user?.isActive ?? true,
+    role: user?.role || ("receptionist" as UserRole),
+    is_active: user?.is_active ?? true,
     password: "",
     confirmPassword: "",
   })
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const validateForm = (): string | null => {
+    if (!formData.full_name.trim()) {
+      return "El nombre completo es requerido"
+    }
+    if (!formData.username.trim()) {
+      return "El nombre de usuario es requerido"
+    }
+    if (!formData.email.trim()) {
+      return "El email es requerido"
+    }
+    if (!user) {
+      if (!formData.password) {
+        return "La contraseña es requerida"
+      }
+      if (formData.password.length < 8) {
+        return "La contraseña debe tener al menos 8 caracteres"
+      }
+      if (formData.password !== formData.confirmPassword) {
+        return "Las contraseñas no coinciden"
+      }
+    }
+    return null
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("Saving user:", formData)
-    onClose()
+    setError(null)
+
+    const validationError = validateForm()
+    if (validationError) {
+      setError(validationError)
+      return
+    }
+
+    setIsSubmitting(true)
+
+    try {
+      if (user) {
+        // Update existing user
+        await userService.updateUser(user.id, {
+          full_name: formData.full_name,
+          username: formData.username,
+          email: formData.email,
+          role: formData.role,
+          is_active: formData.is_active,
+        })
+      } else {
+        // Create new user
+        await userService.createUser({
+          full_name: formData.full_name,
+          username: formData.username,
+          email: formData.email,
+          role: formData.role,
+          is_active: formData.is_active,
+          password_hash: formData.password,
+        })
+      }
+      onClose()
+    } catch (err) {
+      const errorMessage =
+        err instanceof ApiError
+          ? err.message
+          : "Error al guardar el usuario"
+      setError(errorMessage)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="name">Nombre Completo</Label>
+          <Label htmlFor="full_name">Nombre Completo</Label>
           <Input
-            id="name"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            id="full_name"
+            value={formData.full_name}
+            onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
             placeholder="Nombre del usuario"
             required
+            disabled={isSubmitting}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="username">Nombre de Usuario</Label>
           <Input
-            id="email"
-            type="email"
-            value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            placeholder="usuario@hospital.com"
+            id="username"
+            value={formData.username}
+            onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+            placeholder="usuario123"
             required
+            disabled={isSubmitting}
           />
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="email">Email</Label>
+        <Input
+          id="email"
+          type="email"
+          value={formData.email}
+          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+          placeholder="usuario@hospital.com"
+          required
+          disabled={isSubmitting}
+        />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label>Rol</Label>
-          <Select value={formData.role} onValueChange={(v) => setFormData({ ...formData, role: v as User["role"] })}>
+          <Select
+            value={formData.role}
+            onValueChange={(v) => setFormData({ ...formData, role: v as UserRole })}
+            disabled={isSubmitting}
+          >
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
@@ -86,10 +182,11 @@ export function UserForm({ user, onClose }: UserFormProps) {
           <Label>Estado</Label>
           <div className="flex items-center gap-2 pt-2">
             <Switch
-              checked={formData.isActive}
-              onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })}
+              checked={formData.is_active}
+              onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+              disabled={isSubmitting}
             />
-            <span className="text-sm">{formData.isActive ? "Activo" : "Inactivo"}</span>
+            <span className="text-sm">{formData.is_active ? "Activo" : "Inactivo"}</span>
           </div>
         </div>
       </div>
@@ -105,6 +202,7 @@ export function UserForm({ user, onClose }: UserFormProps) {
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               placeholder="********"
               required={!user}
+              disabled={isSubmitting}
             />
           </div>
           <div className="space-y-2">
@@ -116,16 +214,20 @@ export function UserForm({ user, onClose }: UserFormProps) {
               onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
               placeholder="********"
               required={!user}
+              disabled={isSubmitting}
             />
           </div>
         </div>
       )}
 
       <div className="flex justify-end gap-2 pt-4">
-        <Button type="button" variant="outline" onClick={onClose}>
+        <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
           Cancelar
         </Button>
-        <Button type="submit">{user ? "Guardar Cambios" : "Crear Usuario"}</Button>
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {user ? "Guardar Cambios" : "Crear Usuario"}
+        </Button>
       </div>
     </form>
   )

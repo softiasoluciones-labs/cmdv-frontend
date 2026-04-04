@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { useAuth } from "@/hooks/use-auth"
 import {
   LayoutDashboard,
   Users,
@@ -31,6 +33,14 @@ import {
   ShoppingCart,
   FileText,
   Activity,
+  LogOut,
+  Sliders,
+  Puzzle,
+  Plug,
+  CalendarClock,
+  Bell,
+  Megaphone,
+  BookUser
 } from "lucide-react"
 
 interface NavItem {
@@ -48,20 +58,19 @@ const navigation: NavItem[] = [
     icon: Users,
     children: [
       { title: "Lista de Usuarios", href: "/admin/users", icon: Users },
-      { title: "Roles y Permisos", href: "/admin/users", icon: UserCog },
+      { title: "Roles y Permisos", href: "/admin/rols", icon: UserCog },
     ],
   },
-  { title: "Parámetros", href: "/admin/settings", icon: Settings },
   {
     title: "Inventario",
     href: "/inventory",
     icon: Package,
     children: [
       { title: "Productos", href: "/inventory", icon: Package },
-      { title: "Proveedores", href: "/inventory", icon: Truck },
-      { title: "Bodegas", href: "/inventory", icon: Warehouse },
-      { title: "Órdenes de Compra", href: "/inventory", icon: ClipboardList },
-      { title: "Pagos a Proveedores", href: "/inventory", icon: CreditCard },
+      { title: "Proveedores", href: "/inventory/suppliers", icon: Truck },
+      { title: "Bodegas", href: "/inventory/warehouses", icon: Warehouse },
+      { title: "Órdenes de Compra", href: "/inventory/purchase-orders", icon: ClipboardList },
+      { title: "Pagos a Proveedores", href: "/inventory/payments-suppliers", icon: CreditCard },
     ],
   },
   {
@@ -71,9 +80,9 @@ const navigation: NavItem[] = [
     children: [
       { title: "Pacientes", href: "/medical/patients", icon: Users },
       { title: "Expedientes", href: "/medical/case-files", icon: FolderOpen },
-      { title: "Paquetes", href: "/medical/patients", icon: Package },
-      { title: "Catálogo de Operaciones", href: "/medical/patients", icon: Scissors },
-      { title: "Programación de Cirugías", href: "/medical/patients", icon: Calendar },
+      { title: "Paquetes", href: "/medical/packages", icon: Package },
+      { title: "Catálogo de Operaciones", href: "", icon: Scissors },
+      { title: "Programación de Cirugías", href: "/medical/schedule-operations", icon: Calendar },
     ],
   },
   {
@@ -92,10 +101,42 @@ const navigation: NavItem[] = [
     icon: Pill,
     children: [
       { title: "Punto de Venta", href: "/pharmacy", icon: ShoppingCart },
-      { title: "Stock", href: "/pharmacy", icon: Package },
-      { title: "Historial de Ventas", href: "/pharmacy", icon: Receipt },
+      { title: "Stock", href: "/pharmacy/stock-pharmacy", icon: Package },
+      { title: "Historial de Ventas", href: "/pharmacy/sales-history", icon: Receipt },
     ],
   },
+  {
+    title: "Herramientas",
+    href: "/admin/tools",
+    icon: CalendarClock,
+    children: [
+      { title: "Calendarios", href: "/admin/tools/calendars", icon: Calendar },
+      { title: "Agenda", href: "/admin/tools/contacts", icon: BookUser },
+      { title: "Notificaciones", href: "/admin/tools/notifications", icon: Megaphone },
+    ],
+  },
+  {
+    title: "Sistema",
+    href: "/admin/system",
+    icon: Settings,
+    children: [
+      {
+        title: "Configuraciones",
+        href: "/admin/system/settings",
+        icon: Sliders,
+      },
+      {
+        title: "Extensiones",
+        href: "/admin/system/extensions",
+        icon: Puzzle,
+      },
+      {
+        title: "Servicios",
+        href: "/admin/system/services",
+        icon: Plug,
+      },
+    ],
+  }
 ]
 
 export function Sidebar() {
@@ -141,7 +182,7 @@ export function Sidebar() {
         </div>
 
         {/* Navigation */}
-        <ScrollArea className="h-[calc(100vh-8rem)]">
+        <ScrollArea className="h-[calc(100vh-13rem)]">
           <nav className="p-2 space-y-1">
             {navigation.map((item) => {
               const Icon = item.icon
@@ -235,28 +276,74 @@ export function Sidebar() {
           </nav>
         </ScrollArea>
 
-        {/* Collapse Button */}
-        <div className="absolute bottom-0 left-0 right-0 border-t border-sidebar-border p-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setCollapsed(!collapsed)}
-            className={cn(
-              "w-full justify-center text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-              collapsed && "px-0",
-            )}
-          >
-            {collapsed ? (
-              <ChevronRight className="h-5 w-5" />
-            ) : (
-              <>
-                <ChevronLeft className="h-5 w-5 mr-2" />
-                <span>Colapsar</span>
-              </>
-            )}
-          </Button>
+        {/* User Info & Actions */}
+        <div className="absolute bottom-0 left-0 right-0 border-t border-sidebar-border">
+          <div className="p-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setCollapsed(!collapsed)}
+              className={cn(
+                "w-full justify-center text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                collapsed && "px-0",
+              )}
+            >
+              {collapsed ? (
+                <ChevronRight className="h-5 w-5" />
+              ) : (
+                <>
+                  <ChevronLeft className="h-5 w-5 mr-2" />
+                  <span>Colapsar</span>
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </aside>
     </TooltipProvider>
   )
 }
+
+/*function UserInfo() {
+  const { user, logout } = useAuth()
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase()
+  }
+
+  if (!user) return null
+
+  return (
+    <div className="p-3 space-y-2">
+      <div className="flex items-center gap-3">
+        <Avatar className="h-9 w-9">
+          <AvatarFallback className="bg-primary/10 text-primary text-sm">
+            {getInitials(user.name)}
+          </AvatarFallback>
+        </Avatar>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-sidebar-foreground truncate">
+            {user.name}
+          </p>
+          <p className="text-xs text-sidebar-foreground/60 truncate">
+            {user.email}
+          </p>
+        </div>
+      </div>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={logout}
+        className="w-full justify-start text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+      >
+        <LogOut className="h-4 w-4 mr-2" />
+        <span>Cerrar Sesión</span>
+      </Button>
+    </div>
+  )
+}*/
