@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -13,256 +13,383 @@ import { Switch } from "@/components/ui/switch"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Search, Plus, Edit, Trash2, Shield, Users, Eye, EyeOff, Copy, Save, X, Check, MoreVertical } from "lucide-react"
+import { Search, Plus, Edit, Trash2, Shield, Users, Eye, EyeOff, Copy, Save, X, Check, MoreVertical, RefreshCw, Loader2 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Skeleton } from "@/components/ui/skeleton"
+import { toast } from "sonner"
+import { Permission, ApiRole } from "@/lib/api/types/core-types/user.types"
+import { useRoles } from "@/hooks/use-roles"
+import { roleService } from "@/lib/api"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
-// Datos de ejemplo para roles
-const mockRoles = [
-    {
-        id: "1",
-        name: "Administrador",
-        description: "Acceso completo a todas las funcionalidades del sistema",
-        userCount: 3,
-        isActive: true,
-        permissions: {
-            users: ["read", "write", "delete"],
-            patients: ["read", "write", "delete"],
-            appointments: ["read", "write", "delete"],
-            billing: ["read", "write", "delete"],
-            inventory: ["read", "write", "delete"],
-            reports: ["read", "write", "delete"],
-            settings: ["read", "write", "delete"],
-        },
-        createdAt: "2024-01-15",
-    },
-    {
-        id: "2",
-        name: "Médico",
-        description: "Puede gestionar pacientes, citas y ver historiales médicos",
-        userCount: 12,
-        isActive: true,
-        permissions: {
-            users: ["read"],
-            patients: ["read", "write"],
-            appointments: ["read", "write"],
-            billing: [],
-            inventory: ["read"],
-            reports: ["read"],
-            settings: [],
-        },
-        createdAt: "2024-01-16",
-    },
-    {
-        id: "3",
-        name: "Enfermero/a",
-        description: "Gestiona signos vitales, medicamentos y apoyo en consultas",
-        userCount: 8,
-        isActive: true,
-        permissions: {
-            users: [],
-            patients: ["read", "write"],
-            appointments: ["read"],
-            billing: [],
-            inventory: ["read"],
-            reports: ["read"],
-            settings: [],
-        },
-        createdAt: "2024-01-17",
-    },
-    {
-        id: "4",
-        name: "Recepción",
-        description: "Gestiona citas, registra pacientes y facturación básica",
-        userCount: 5,
-        isActive: true,
-        permissions: {
-            users: [],
-            patients: ["read", "write"],
-            appointments: ["read", "write"],
-            billing: ["read", "write"],
-            inventory: ["read"],
-            reports: ["read"],
-            settings: [],
-        },
-        createdAt: "2024-01-18",
-    },
-    {
-        id: "5",
-        name: "Farmacia",
-        description: "Gestiona inventario de medicamentos y dispensación",
-        userCount: 4,
-        isActive: true,
-        permissions: {
-            users: [],
-            patients: ["read"],
-            appointments: ["read"],
-            billing: ["read"],
-            inventory: ["read", "write", "delete"],
-            reports: ["read", "write"],
-            settings: [],
-        },
-        createdAt: "2024-01-19",
-    },
-    {
-        id: "6",
-        name: "Facturación",
-        description: "Gestión completa de facturación y reportes financieros",
-        userCount: 2,
-        isActive: false,
-        permissions: {
-            users: [],
-            patients: ["read"],
-            appointments: ["read"],
-            billing: ["read", "write", "delete"],
-            inventory: ["read"],
-            reports: ["read", "write"],
-            settings: [],
-        },
-        createdAt: "2024-01-20",
-    },
-]
+// Mapeo de recursos a nombres de módulos
+const resourceToModule: Record<string, string> = {
+    "users": "Usuarios",
+    "patients": "Pacientes",
+    "appointments": "Citas",
+    "medical_records": "Historias Clínicas",
+    "billing": "Facturación",
+    "inventory": "Inventario",
+    "reports": "Reportes",
+    "settings": "Configuración",
+    "laboratory": "Laboratorio",
+    "imaging": "Imágenes",
+    "roles": "Roles",
+    "warehouses": "Bodegas",
+    "case_files": "Expedientes",
+    "audit": "Auditoría",
+    "invoices": "Facturas",
+    "suppliers": "Proveedores",
+    "products": "Productos",
+    "system": "Configuración del Sistema",
+    "pharmacy": "Farmacia",
+    "lab_tests": "Examenes de Laboratorio",
+    "rooms": "Habitaciones",
+    "operations": "Quirófanos",
+    "surgeries": "Cirugías",
+    "consultations": "Consultas",
+    "doctors": "Doctores",
+    "nurses": "Enfermeras",
+    "pharmacists": "Farmacéuticos",
+    "receptionists": "Recepcionistas",
+    "lab_technicians": "Técnicos de Laboratorio",
+    "billing_staff": "Personal de Facturación",
+    "warehouse_managers": "Gerentes de Bodega",
+}
 
-// Permisos disponibles
-const permissionModules = [
-    { id: "users", label: "Usuarios", description: "Gestión de usuarios del sistema" },
-    { id: "patients", label: "Pacientes", description: "Registro y gestión de pacientes" },
-    { id: "appointments", label: "Citas", description: "Agenda y gestión de citas" },
-    { id: "medical_records", label: "Historias Clínicas", description: "Acceso a historias médicas" },
-    { id: "billing", label: "Facturación", description: "Facturación y pagos" },
-    { id: "inventory", label: "Inventario", description: "Gestión de medicamentos y suministros" },
-    { id: "reports", label: "Reportes", description: "Generación de reportes" },
-    { id: "settings", label: "Configuración", description: "Configuración del sistema" },
-    { id: "laboratory", label: "Laboratorio", description: "Resultados de laboratorio" },
-    { id: "imaging", label: "Imágenes", description: "Estudios de imagen" },
-]
+// Mapeo de acciones a nombres legibles
+const actionToType: Record<string, { label: string; color: string }> = {
+    "create": { label: "Crear", color: "bg-green-100 text-green-800" },
+    "read": { label: "Leer", color: "bg-blue-100 text-blue-800" },
+    "update": { label: "Actualizar", color: "bg-yellow-100 text-yellow-800" },
+    "delete": { label: "Eliminar", color: "bg-red-100 text-red-800" },
+    "approve": { label: "Aprobar", color: "bg-purple-100 text-purple-800" },
+    "export": { label: "Exportar", color: "bg-indigo-100 text-indigo-800" },
+    "import": { label: "Importar", color: "bg-orange-100 text-orange-800" },
+}
 
-const permissionTypes = [
-    { id: "read", label: "Lectura", color: "bg-blue-100 text-blue-800" },
-    { id: "write", label: "Escritura", color: "bg-green-100 text-green-800" },
-    { id: "delete", label: "Eliminar", color: "bg-red-100 text-red-800" },
-    { id: "approve", label: "Aprobar", color: "bg-purple-100 text-purple-800" },
-]
+// Componente para mostrar los permisos en un popover
+const PopoverPermissionCell = ({ permissions }: { permissions: Permission[] }) => {
+    const grouped = groupPermissionsByResource(permissions)
+    const totalModules = Object.keys(grouped).length
+    const totalActions = permissions.length
+
+    if (permissions.length === 0) {
+        return <span className="text-xs text-muted-foreground">Sin permisos</span>
+    }
+
+    // Crear texto resumen
+    const getSummaryText = () => {
+        const firstModules = Object.keys(grouped).slice(0, 2)
+        const summaries = firstModules.map(module => {
+            const actions = grouped[module].map(p => actionToType[p.action]?.label || p.action).join(',')
+            return `${resourceToModule[module] || module}(${actions})`
+        })
+        const summary = summaries.join(', ')
+        return totalModules > 2 ? `${summary} +${totalModules - 2} más` : summary
+    }
+
+    return (
+        <Popover>
+            <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-7 px-2 text-xs">
+                    <Shield className="h-3 w-3 mr-1" />
+                    {totalModules} módulos • {totalActions}
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 p-3" align="start">
+                <div className="space-y-2">
+                    <h4 className="text-sm font-semibold flex items-center gap-2">
+                        <Shield className="h-4 w-4" />
+                        Permisos asignados
+                    </h4>
+                    <div className="max-h-64 overflow-y-auto">
+                        {Object.entries(grouped).map(([resource, perms]) => (
+                            <div key={resource} className="mb-3 last:mb-0">
+                                <div className="text-xs font-medium text-muted-foreground mb-1">
+                                    {resourceToModule[resource] || resource}:
+                                </div>
+                                <div className="flex flex-wrap gap-1">
+                                    {perms.map(perm => {
+                                        const actionInfo = actionToType[perm.action]
+                                        return actionInfo ? (
+                                            <Badge key={perm.id} variant="secondary" className={`text-xs ${actionInfo.color}`}>
+                                                {actionInfo.label}
+                                            </Badge>
+                                        ) : (
+                                            <Badge key={perm.id} variant="outline" className="text-xs">
+                                                {perm.action}
+                                            </Badge>
+                                        )
+                                    })}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="text-xs text-muted-foreground pt-2 border-t">
+                        Total: {totalActions} permisos en {totalModules} módulos
+                    </div>
+                </div>
+            </PopoverContent>
+        </Popover>
+    )
+}
+
+// Obtener módulos únicos de los permisos
+const getUniqueModules = (roles: ApiRole[]): string[] => {
+    const modules = new Set<string>()
+    roles.forEach(role => {
+        role.permissions.forEach(permission => {
+            if (resourceToModule[permission.resource]) {
+                modules.add(permission.resource)
+            }
+        })
+    })
+    return Array.from(modules).sort()
+}
+
+// Agrupar permisos por recurso
+const groupPermissionsByResource = (permissions: Permission[]): Record<string, Permission[]> => {
+    const grouped: Record<string, Permission[]> = {}
+    permissions.forEach(permission => {
+        if (!grouped[permission.resource]) {
+            grouped[permission.resource] = []
+        }
+        grouped[permission.resource].push(permission)
+    })
+    return grouped
+}
 
 export default function RolesPage() {
     const [search, setSearch] = useState("")
     const [statusFilter, setStatusFilter] = useState("all")
-    const [selectedRole, setSelectedRole] = useState<any>(null)
+    const [selectedRole, setSelectedRole] = useState<ApiRole | null>(null)
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
     const [isCloneDialogOpen, setIsCloneDialogOpen] = useState(false)
+    const { roles, stats, isLoading: loading, refetch: fetchRoles, deleteRole } = useRoles()
+
     const [roleForm, setRoleForm] = useState({
         name: "",
+        displayName: "",
         description: "",
-        isActive: true,
-        permissions: {},
+        status: "active" as "active" | "inactive",
+        permissions: {} as Record<string, string[]>,
     })
     const [activeTab, setActiveTab] = useState("list")
 
-    // Filtrar roles
-    const filteredRoles = mockRoles.filter(role => {
-        const matchesSearch =
-            role.name.toLowerCase().includes(search.toLowerCase()) ||
-            role.description.toLowerCase().includes(search.toLowerCase())
-        const matchesStatus =
-            statusFilter === "all" ||
-            (statusFilter === "active" && role.isActive) ||
-            (statusFilter === "inactive" && !role.isActive)
-        return matchesSearch && matchesStatus
-    })
+    // fetchRoles is handled by useRoles
 
-    // Estadísticas
-    const stats = {
-        totalRoles: mockRoles.length,
-        activeRoles: mockRoles.filter(r => r.isActive).length,
-        inactiveRoles: mockRoles.filter(r => !r.isActive).length,
-        totalUsers: mockRoles.reduce((sum, role) => sum + role.userCount, 0),
-    }
+    // Filtrar roles
+    const filteredRoles = useMemo(() => {
+        return roles.filter(role => {
+            const matchesSearch =
+                role.displayName.toLowerCase().includes(search.toLowerCase()) ||
+                role.name.toLowerCase().includes(search.toLowerCase()) ||
+                (role.description && role.description.toLowerCase().includes(search.toLowerCase()))
+
+            const matchesStatus =
+                statusFilter === "all" ||
+                (statusFilter === "active" && role.status === "active") ||
+                (statusFilter === "inactive" && role.status === "inactive")
+
+            return matchesSearch && matchesStatus
+        })
+    }, [roles, search, statusFilter])
+
+    // Obtener módulos únicos
+    const modules = useMemo(() => getUniqueModules(roles), [roles])
 
     // Handlers
-    const handleEditRole = (role: any) => {
+    const handleEditRole = (role: ApiRole) => {
         setSelectedRole(role)
+
+        // Convertir permisos a formato del formulario
+        const permissionsForm: Record<string, string[]> = {}
+        role.permissions.forEach(permission => {
+            if (!permissionsForm[permission.resource]) {
+                permissionsForm[permission.resource] = []
+            }
+            if (!permissionsForm[permission.resource].includes(permission.action)) {
+                permissionsForm[permission.resource].push(permission.action)
+            }
+        })
+
         setRoleForm({
             name: role.name,
-            description: role.description,
-            isActive: role.isActive,
-            permissions: { ...role.permissions },
+            displayName: role.displayName,
+            description: role.description || "",
+            status: role.status,
+            permissions: permissionsForm,
         })
         setIsDialogOpen(true)
     }
 
-    const handleCloneRole = (role: any) => {
+    const handleCloneRole = (role: ApiRole) => {
         setSelectedRole(role)
+
+        const permissionsForm: Record<string, string[]> = {}
+        role.permissions.forEach(permission => {
+            if (!permissionsForm[permission.resource]) {
+                permissionsForm[permission.resource] = []
+            }
+            if (!permissionsForm[permission.resource].includes(permission.action)) {
+                permissionsForm[permission.resource].push(permission.action)
+            }
+        })
+
         setRoleForm({
-            name: `${role.name} (Copia)`,
-            description: role.description,
-            isActive: true,
-            permissions: { ...role.permissions },
+            name: `${role.name}_copy`,
+            displayName: `${role.displayName} (Copia)`,
+            description: role.description || "",
+            status: "active",
+            permissions: permissionsForm,
         })
         setIsCloneDialogOpen(true)
     }
 
-    const handleDeleteRole = (role: any) => {
+    const handleDeleteRole = (role: ApiRole) => {
         setSelectedRole(role)
         setIsDeleteDialogOpen(true)
     }
 
-    const handleSaveRole = () => {
-        console.log("Guardando rol:", roleForm)
-        setIsDialogOpen(false)
-        setIsCloneDialogOpen(false)
-        setSelectedRole(null)
-        setRoleForm({
-            name: "",
-            description: "",
-            isActive: true,
-            permissions: {},
-        })
+    const handleSaveRole = async () => {
+        try {
+            // Convertir permisos a array de objetos para el API
+            const permissionsArray: { resource: string; action: string }[] = []
+            Object.entries(roleForm.permissions).forEach(([resource, actions]) => {
+                actions.forEach(action => {
+                    permissionsArray.push({ resource, action })
+                })
+            })
+
+            const payload = {
+                name: roleForm.name,
+                displayName: roleForm.displayName,
+                description: roleForm.description,
+                permissions: permissionsArray,
+                status: roleForm.status,
+            }
+
+            if (selectedRole) {
+                await roleService.updateRole(selectedRole.id, payload as any)
+            } else {
+                await roleService.createRole(payload as any)
+            }
+
+            toast.success(selectedRole ? "Rol actualizado correctamente" : "Rol creado correctamente")
+            setIsDialogOpen(false)
+            setIsCloneDialogOpen(false)
+            setSelectedRole(null)
+            setRoleForm({
+                name: "",
+                displayName: "",
+                description: "",
+                status: "active",
+                permissions: {},
+            })
+            fetchRoles() // Recargar lista
+        } catch (error: any) {
+            console.error("Error saving role:", error)
+            toast.error(error.message || "Error al guardar el rol")
+        }
     }
 
-    const handlePermissionChange = (module: string, permission: string, checked: boolean) => {
+    const handleConfirmDelete = async () => {
+        if (!selectedRole) return
+
+        const success = await deleteRole(selectedRole.id)
+
+        if (success) {
+            toast.success("Rol eliminado correctamente")
+            setIsDeleteDialogOpen(false)
+            setSelectedRole(null)
+            fetchRoles()
+        }
+    }
+
+    const handlePermissionChange = (resource: string, action: string, checked: boolean) => {
         setRoleForm(prev => {
-            const modulePerms: string[] = prev.permissions[module as keyof typeof prev.permissions] || []
-            let newPerms = [...modulePerms]
+            const currentActions = prev.permissions[resource] || []
+            let newActions = [...currentActions]
 
             if (checked) {
-                if (!newPerms.includes(permission)) {
-                    newPerms.push(permission)
+                if (!newActions.includes(action)) {
+                    newActions.push(action)
                 }
             } else {
-                newPerms = newPerms.filter(p => p !== permission)
+                newActions = newActions.filter(a => a !== action)
             }
 
             return {
                 ...prev,
                 permissions: {
                     ...prev.permissions,
-                    [module]: newPerms,
+                    [resource]: newActions,
                 },
             }
         })
     }
 
-    const handleSelectAllPermissions = (module: string, selectAll: boolean) => {
+    const handleSelectAllPermissions = (resource: string, selectAll: boolean) => {
         setRoleForm(prev => ({
             ...prev,
             permissions: {
                 ...prev.permissions,
-                [module]: selectAll ? permissionTypes.map(p => p.id) : [],
+                [resource]: selectAll ? Object.keys(actionToType) : [],
             },
         }))
     }
 
     // Render badge de permisos
-    const renderPermissionBadges = (permissions: string[]) => {
-        return permissionTypes
-            .filter(pt => permissions.includes(pt.id))
-            .map(pt => (
-                <Badge key={pt.id} variant="secondary" className={`mr-1 ${pt.color}`}>
-                    {pt.label}
-                </Badge>
-            ))
+    const renderPermissionBadges = (permissions: Permission[]) => {
+        const grouped = groupPermissionsByResource(permissions)
+
+        return Object.entries(grouped).map(([resource, perms]) => (
+            <div key={resource} className="mb-2 last:mb-0">
+                <div className="text-xs font-medium text-muted-foreground mb-1">
+                    {resourceToModule[resource] || resource}:
+                </div>
+                <div className="flex flex-wrap gap-1">
+                    {perms.map(perm => {
+                        const actionInfo = actionToType[perm.action]
+                        return actionInfo ? (
+                            <Badge key={perm.id} variant="secondary" className={`text-xs ${actionInfo.color}`}>
+                                {actionInfo.label}
+                            </Badge>
+                        ) : (
+                            <Badge key={perm.id} variant="outline" className="text-xs">
+                                {perm.action}
+                            </Badge>
+                        )
+                    })}
+                </div>
+            </div>
+        ))
+    }
+
+    if (loading) {
+        return (
+            <DashboardLayout>
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <Skeleton className="h-8 w-48" />
+                            <Skeleton className="h-4 w-64 mt-2" />
+                        </div>
+                        <Skeleton className="h-10 w-32" />
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-4">
+                        {[...Array(4)].map((_, i) => (
+                            <Skeleton key={i} className="h-24 w-full" />
+                        ))}
+                    </div>
+                    <Skeleton className="h-[400px] w-full" />
+                </div>
+            </DashboardLayout>
+        )
     }
 
     return (
@@ -277,6 +404,10 @@ export default function RolesPage() {
                         </p>
                     </div>
                     <div className="flex gap-2">
+                        <Button variant="outline" onClick={fetchRoles}>
+                            <RefreshCw className="mr-2 h-4 w-4" />
+                            Actualizar
+                        </Button>
                         <Button
                             variant="outline"
                             onClick={() => setActiveTab(activeTab === "list" ? "permissions" : "list")}
@@ -299,8 +430,9 @@ export default function RolesPage() {
                                     setSelectedRole(null)
                                     setRoleForm({
                                         name: "",
+                                        displayName: "",
                                         description: "",
-                                        isActive: true,
+                                        status: "active",
                                         permissions: {},
                                     })
                                 }}>
@@ -319,32 +451,50 @@ export default function RolesPage() {
                                         <div className="space-y-4">
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div className="space-y-2">
-                                                    <Label htmlFor="name">Nombre del Rol *</Label>
+                                                    <Label htmlFor="name">Nombre del Rol (identificador) *</Label>
                                                     <Input
                                                         id="name"
-                                                        placeholder="Ej: Médico Especialista"
+                                                        placeholder="Ej: medical_doctor"
                                                         value={roleForm.name}
                                                         onChange={(e) => setRoleForm({ ...roleForm, name: e.target.value })}
                                                     />
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Identificador único del rol (snake_case)
+                                                    </p>
                                                 </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="displayName">Nombre Mostrado *</Label>
+                                                    <Input
+                                                        id="displayName"
+                                                        placeholder="Ej: Médico Especialista"
+                                                        value={roleForm.displayName}
+                                                        onChange={(e) => setRoleForm({ ...roleForm, displayName: e.target.value })}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
                                                 <div className="space-y-2">
                                                     <Label htmlFor="status">Estado</Label>
                                                     <div className="flex items-center space-x-2">
                                                         <Switch
                                                             id="status"
-                                                            checked={roleForm.isActive}
-                                                            onCheckedChange={(checked) => setRoleForm({ ...roleForm, isActive: checked })}
+                                                            checked={roleForm.status === "active"}
+                                                            onCheckedChange={(checked) =>
+                                                                setRoleForm({ ...roleForm, status: checked ? "active" : "inactive" })
+                                                            }
                                                         />
                                                         <Label htmlFor="status">
-                                                            {roleForm.isActive ? "Activo" : "Inactivo"}
+                                                            {roleForm.status === "active" ? "Activo" : "Inactivo"}
                                                         </Label>
                                                     </div>
                                                 </div>
                                             </div>
                                             <div className="space-y-2">
                                                 <Label htmlFor="description">Descripción</Label>
-                                                <Input
+                                                <textarea
                                                     id="description"
+                                                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                                    rows={3}
                                                     placeholder="Describe las responsabilidades y acceso de este rol..."
                                                     value={roleForm.description}
                                                     onChange={(e) => setRoleForm({ ...roleForm, description: e.target.value })}
@@ -362,21 +512,23 @@ export default function RolesPage() {
                                             </div>
 
                                             <div className="space-y-4">
-                                                {permissionModules.map(module => (
-                                                    <Card key={module.id}>
+                                                {modules.map(resource => (
+                                                    <Card key={resource}>
                                                         <CardHeader className="py-3">
                                                             <div className="flex items-center justify-between">
                                                                 <div>
-                                                                    <CardTitle className="text-base">{module.label}</CardTitle>
+                                                                    <CardTitle className="text-base">
+                                                                        {resourceToModule[resource] || resource}
+                                                                    </CardTitle>
                                                                     <CardDescription className="text-xs">
-                                                                        {module.description}
+                                                                        Permisos para {resourceToModule[resource]?.toLowerCase() || resource}
                                                                     </CardDescription>
                                                                 </div>
                                                                 <div className="flex items-center space-x-2">
                                                                     <Button
                                                                         variant="ghost"
                                                                         size="sm"
-                                                                        onClick={() => handleSelectAllPermissions(module.id, true)}
+                                                                        onClick={() => handleSelectAllPermissions(resource, true)}
                                                                     >
                                                                         <Check className="h-3 w-3 mr-1" />
                                                                         Todos
@@ -384,7 +536,7 @@ export default function RolesPage() {
                                                                     <Button
                                                                         variant="ghost"
                                                                         size="sm"
-                                                                        onClick={() => handleSelectAllPermissions(module.id, false)}
+                                                                        onClick={() => handleSelectAllPermissions(resource, false)}
                                                                     >
                                                                         <X className="h-3 w-3 mr-1" />
                                                                         Ninguno
@@ -394,23 +546,23 @@ export default function RolesPage() {
                                                         </CardHeader>
                                                         <CardContent className="py-3">
                                                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                                                {permissionTypes.map(perm => {
-                                                                    const modulePerms: string[] = roleForm.permissions[module.id as keyof typeof roleForm.permissions] || []
-                                                                    const isChecked = modulePerms.includes(perm.id)
+                                                                {Object.entries(actionToType).map(([action, { label }]) => {
+                                                                    const currentActions = roleForm.permissions[resource] || []
+                                                                    const isChecked = currentActions.includes(action)
                                                                     return (
-                                                                        <div key={perm.id} className="flex items-center space-x-2">
+                                                                        <div key={action} className="flex items-center space-x-2">
                                                                             <Checkbox
-                                                                                id={`${module.id}-${perm.id}`}
+                                                                                id={`${resource}-${action}`}
                                                                                 checked={isChecked}
                                                                                 onCheckedChange={(checked) =>
-                                                                                    handlePermissionChange(module.id, perm.id, checked as boolean)
+                                                                                    handlePermissionChange(resource, action, checked as boolean)
                                                                                 }
                                                                             />
                                                                             <Label
-                                                                                htmlFor={`${module.id}-${perm.id}`}
+                                                                                htmlFor={`${resource}-${action}`}
                                                                                 className="text-sm cursor-pointer"
                                                                             >
-                                                                                {perm.label}
+                                                                                {label}
                                                                             </Label>
                                                                         </div>
                                                                     )
@@ -479,7 +631,7 @@ export default function RolesPage() {
                             </div>
                             <div>
                                 <p className="text-sm text-muted-foreground">Usuarios Asignados</p>
-                                <p className="text-2xl font-bold">{stats.totalUsers}</p>
+                                <p className="text-2xl font-bold">{stats.assignedUsers}</p>
                             </div>
                         </CardContent>
                     </Card>
@@ -552,38 +704,40 @@ export default function RolesPage() {
                                         {filteredRoles.map((role) => (
                                             <TableRow key={role.id}>
                                                 <TableCell className="font-medium">
-                                                    <div className="flex items-center gap-2">
-                                                        <Shield className="h-4 w-4 text-muted-foreground" />
-                                                        {role.name}
+                                                    <div className="flex flex-col">
+                                                        <div className="flex items-center gap-2">
+                                                            <Shield className="h-4 w-4 text-muted-foreground" />
+                                                            <span>{role.displayName}</span>
+                                                        </div>
+                                                        <code className="text-xs text-muted-foreground mt-1">
+                                                            {role.name}
+                                                        </code>
                                                     </div>
                                                 </TableCell>
-                                                <TableCell className="max-w-xs truncate">
-                                                    <span className="text-sm text-muted-foreground">
-                                                        {role.description}
+                                                <TableCell className="max-w-xs">
+                                                    <span className="text-sm text-muted-foreground line-clamp-2">
+                                                        {role.description || "Sin descripción"}
                                                     </span>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <div className="flex flex-wrap gap-1 max-w-xs">
-                                                        {renderPermissionBadges(role.permissions.users || [])}
-                                                        {role.permissions.users?.length === 0 && (
-                                                            <span className="text-xs text-muted-foreground">Sin permisos</span>
-                                                        )}
-                                                    </div>
+                                                    <PopoverPermissionCell permissions={role.permissions} />
                                                 </TableCell>
                                                 <TableCell>
                                                     <Badge variant="outline" className="gap-1">
                                                         <Users className="h-3 w-3" />
-                                                        {role.userCount}
+                                                        {role.usersCount}
                                                     </Badge>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Badge variant={role.isActive ? "default" : "secondary"}>
-                                                        {role.isActive ? "Activo" : "Inactivo"}
+                                                    <Badge variant={role.status === "active" ? "default" : "secondary"}>
+                                                        {role.status === "active" ? "Activo" : "Inactivo"}
                                                     </Badge>
                                                 </TableCell>
                                                 <TableCell>
                                                     <span className="text-sm text-muted-foreground">
-                                                        {new Date(role.createdAt).toLocaleDateString('es-GT')}
+                                                        {role.createdAt
+                                                            ? new Date(role.createdAt).toLocaleDateString('es-GT')
+                                                            : "N/A"}
                                                     </span>
                                                 </TableCell>
                                                 <TableCell className="text-right">
@@ -592,6 +746,7 @@ export default function RolesPage() {
                                                             variant="ghost"
                                                             size="icon"
                                                             onClick={() => handleEditRole(role)}
+                                                            title="Editar"
                                                         >
                                                             <Edit className="h-4 w-4" />
                                                         </Button>
@@ -599,6 +754,7 @@ export default function RolesPage() {
                                                             variant="ghost"
                                                             size="icon"
                                                             onClick={() => handleCloneRole(role)}
+                                                            title="Clonar"
                                                         >
                                                             <Copy className="h-4 w-4" />
                                                         </Button>
@@ -653,12 +809,12 @@ export default function RolesPage() {
                                         <TableHeader>
                                             <TableRow>
                                                 <TableHead className="w-[200px]">Módulo</TableHead>
-                                                {mockRoles.map(role => (
-                                                    <TableHead key={role.id} className="text-center">
+                                                {roles.map(role => (
+                                                    <TableHead key={role.id} className="text-center min-w-[100px]">
                                                         <div className="flex flex-col items-center">
-                                                            <span className="font-medium">{role.name}</span>
+                                                            <span className="font-medium">{role.displayName}</span>
                                                             <Badge variant="outline" className="mt-1 text-xs px-2 py-0.5">
-                                                                {role.userCount} users
+                                                                {role.usersCount} usuarios
                                                             </Badge>
                                                         </div>
                                                     </TableHead>
@@ -666,59 +822,65 @@ export default function RolesPage() {
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                            {permissionModules.map(module => (
-                                                <TableRow key={module.id}>
-                                                    <TableCell className="font-medium">
-                                                        <div>
-                                                            <p>{module.label}</p>
-                                                            <p className="text-xs text-muted-foreground">{module.description}</p>
-                                                        </div>
-                                                    </TableCell>
-                                                    {mockRoles.map(role => (
-                                                        <TableCell key={role.id} className="text-center">
-                                                            <div className="flex justify-center gap-1">
-                                                                {permissionTypes.map(perm => {
-                                                                    const hasPermission = role.permissions[module.id as keyof typeof role.permissions]?.includes(perm.id)
-                                                                    return hasPermission ? (
-                                                                        <Badge
-                                                                            key={perm.id}
-                                                                            variant="secondary"
-                                                                            className={`text-xs ${perm.color}`}
-                                                                        >
-                                                                            {perm.label.charAt(0)}
-                                                                        </Badge>
-                                                                    ) : null
-                                                                })}
-                                                                {!role.permissions[module.id as keyof typeof role.permissions]?.length && (
-                                                                    <span className="text-xs text-muted-foreground">—</span>
-                                                                )}
+                                            {modules.map(resource => {
+                                                const moduleName = resourceToModule[resource] || resource
+                                                return (
+                                                    <TableRow key={resource}>
+                                                        <TableCell className="font-medium align-top">
+                                                            <div>
+                                                                <p>{moduleName}</p>
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    {resource}
+                                                                </p>
                                                             </div>
                                                         </TableCell>
-                                                    ))}
-                                                </TableRow>
-                                            ))}
+                                                        {roles.map(role => {
+                                                            const rolePermissions = role.permissions.filter(p => p.resource === resource)
+                                                            return (
+                                                                <TableCell key={role.id} className="text-center align-top">
+                                                                    <div className="flex flex-wrap justify-center gap-1">
+                                                                        {rolePermissions.map(perm => {
+                                                                            const actionInfo = actionToType[perm.action]
+                                                                            return actionInfo ? (
+                                                                                <Badge
+                                                                                    key={perm.id}
+                                                                                    variant="secondary"
+                                                                                    className={`text-xs ${actionInfo.color}`}
+                                                                                >
+                                                                                    {actionInfo.label.charAt(0)}
+                                                                                </Badge>
+                                                                            ) : (
+                                                                                <Badge
+                                                                                    key={perm.id}
+                                                                                    variant="outline"
+                                                                                    className="text-xs"
+                                                                                >
+                                                                                    {perm.action.charAt(0).toUpperCase()}
+                                                                                </Badge>
+                                                                            )
+                                                                        })}
+                                                                        {rolePermissions.length === 0 && (
+                                                                            <span className="text-xs text-muted-foreground">—</span>
+                                                                        )}
+                                                                    </div>
+                                                                </TableCell>
+                                                            )
+                                                        })}
+                                                    </TableRow>
+                                                )
+                                            })}
                                         </TableBody>
                                     </Table>
                                 </div>
                             </CardContent>
                             <CardFooter className="flex-col items-start gap-2 border-t px-6 py-4">
-                                <div className="flex items-center gap-4">
-                                    <div className="flex items-center gap-2">
-                                        <div className="h-3 w-3 rounded-full bg-blue-100"></div>
-                                        <span className="text-xs">Lectura (R)</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <div className="h-3 w-3 rounded-full bg-green-100"></div>
-                                        <span className="text-xs">Escritura (W)</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <div className="h-3 w-3 rounded-full bg-red-100"></div>
-                                        <span className="text-xs">Eliminar (D)</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <div className="h-3 w-3 rounded-full bg-purple-100"></div>
-                                        <span className="text-xs">Aprobar (A)</span>
-                                    </div>
+                                <div className="flex items-center gap-4 flex-wrap">
+                                    {Object.entries(actionToType).map(([action, { label, color }]) => (
+                                        <div key={action} className="flex items-center gap-2">
+                                            <div className={`h-3 w-3 rounded-full ${color.replace('text-', 'bg-')}`}></div>
+                                            <span className="text-xs">{label} ({action.charAt(0).toUpperCase()})</span>
+                                        </div>
+                                    ))}
                                 </div>
                             </CardFooter>
                         </Card>
@@ -734,8 +896,8 @@ export default function RolesPage() {
                         <div className="py-4">
                             <Alert variant="destructive">
                                 <AlertDescription>
-                                    ¿Estás seguro de que deseas eliminar el rol "{selectedRole?.name}"?
-                                    Esta acción no se puede deshacer y afectará a {selectedRole?.userCount} usuarios.
+                                    ¿Estás seguro de que deseas eliminar el rol "{selectedRole?.displayName}"?
+                                    Esta acción no se puede deshacer y afectará a {selectedRole?.usersCount} usuarios.
                                 </AlertDescription>
                             </Alert>
                             <p className="mt-4 text-sm text-muted-foreground">
@@ -746,10 +908,7 @@ export default function RolesPage() {
                             <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
                                 Cancelar
                             </Button>
-                            <Button variant="destructive" onClick={() => {
-                                console.log("Eliminando rol:", selectedRole)
-                                setIsDeleteDialogOpen(false)
-                            }}>
+                            <Button variant="destructive" onClick={handleConfirmDelete}>
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Eliminar Rol
                             </Button>
@@ -765,18 +924,29 @@ export default function RolesPage() {
                         </DialogHeader>
                         <div className="py-4 space-y-4">
                             <div className="space-y-2">
-                                <Label htmlFor="clone-name">Nombre del Nuevo Rol</Label>
+                                <Label htmlFor="clone-name">Nombre del Rol (identificador)</Label>
                                 <Input
                                     id="clone-name"
                                     value={roleForm.name}
                                     onChange={(e) => setRoleForm({ ...roleForm, name: e.target.value })}
-                                    placeholder="Ingresa un nombre para el nuevo rol"
+                                    placeholder="Ej: medical_doctor_copy"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="clone-displayName">Nombre Mostrado</Label>
+                                <Input
+                                    id="clone-displayName"
+                                    value={roleForm.displayName}
+                                    onChange={(e) => setRoleForm({ ...roleForm, displayName: e.target.value })}
+                                    placeholder="Nombre para el nuevo rol"
                                 />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="clone-description">Descripción (opcional)</Label>
-                                <Input
+                                <textarea
                                     id="clone-description"
+                                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    rows={2}
                                     value={roleForm.description}
                                     onChange={(e) => setRoleForm({ ...roleForm, description: e.target.value })}
                                     placeholder="Descripción del nuevo rol"
@@ -784,7 +954,7 @@ export default function RolesPage() {
                             </div>
                             <Alert>
                                 <AlertDescription className="text-sm">
-                                    Se copiarán todos los permisos del rol "{selectedRole?.name}"
+                                    Se copiarán todos los permisos del rol "{selectedRole?.displayName}"
                                 </AlertDescription>
                             </Alert>
                         </div>

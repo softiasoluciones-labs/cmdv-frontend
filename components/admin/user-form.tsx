@@ -11,6 +11,7 @@ import { Switch } from "@/components/ui/switch"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, AlertCircle } from "lucide-react"
 import { ApiUser, UserRole, userService, ApiError } from "@/lib/api"
+import { useAuth } from "@/hooks/use-auth"
 
 interface UserFormProps {
   user?: ApiUser | null
@@ -30,6 +31,8 @@ const roles: { value: UserRole; label: string }[] = [
 ]
 
 export function UserForm({ user, onClose }: UserFormProps) {
+  const { user: currentUser } = useAuth()
+
   const [formData, setFormData] = useState({
     full_name: user?.full_name || "",
     username: user?.username || "",
@@ -87,6 +90,7 @@ export function UserForm({ user, onClose }: UserFormProps) {
           email: formData.email,
           role: formData.role,
           is_active: formData.is_active,
+          updated_by: currentUser?.id,
         })
       } else {
         // Create new user
@@ -97,6 +101,7 @@ export function UserForm({ user, onClose }: UserFormProps) {
           role: formData.role,
           is_active: formData.is_active,
           password_hash: formData.password,
+          created_by: currentUser?.id,
         })
       }
       onClose()

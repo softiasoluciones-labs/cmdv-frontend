@@ -3,5 +3,6 @@
  * Central export for all API services
  */
 
-export { userService } from "./user.service";
+export { userService } from "./core-services/user.service";
 export { authService } from "./auth.service";
+export { roleService } from "./core-services/role.service";

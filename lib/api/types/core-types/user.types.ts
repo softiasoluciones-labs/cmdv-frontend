@@ -7,9 +7,40 @@ export interface Permission {
     id: string;
     name: string;
     description: string;
-    created_at: string;
-    updated_at: string;
+    resource: string;
+    action: string;
 }
+
+export interface ApiRole {
+    id: string;
+    name: string;
+    displayName: string;
+    description: string;
+    usersCount: number;
+    permissions: Permission[];
+    status: "active" | "inactive";
+    createdAt: string | null;
+}
+
+export interface RolesStats {
+    totalRoles: number;
+    activeRoles: number;
+    inactiveRoles: number;
+    assignedUsers: number;
+}
+
+export interface RolesListResponse {
+    stats: RolesStats;
+    roles: ApiRole[];
+}
+
+export interface RolesQueryParams {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: "active" | "inactive" | "all";
+}
+
 
 export interface RolePermission {
     id: string;
@@ -74,6 +105,7 @@ export interface CreateUserRequest {
     full_name: string;
     role: UserRole;
     is_active?: boolean;
+    created_by?: string;
 }
 
 export interface UpdateUserRequest {
@@ -82,4 +114,21 @@ export interface UpdateUserRequest {
     full_name?: string;
     role?: UserRole;
     is_active?: boolean;
+    updated_by?: string;
+}
+
+export interface CreateRoleRequest {
+    name: string;
+    displayName: string;
+    description: string;
+    status: "active" | "inactive";
+    permissions: string[];
+}
+
+export interface UpdateRoleRequest {
+    name?: string;
+    displayName?: string;
+    description?: string;
+    status?: "active" | "inactive";
+    permissions?: string[];
 }

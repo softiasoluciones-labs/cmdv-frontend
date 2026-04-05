@@ -3,14 +3,14 @@
  * API service for user-related operations
  */
 
-import { api } from "../client";
+import { api } from "../../client";
 import {
     ApiUser,
     CreateUserRequest,
     UpdateUserRequest,
     UsersListResponse,
     UsersQueryParams,
-} from "../types";
+} from "../../types";
 
 const USERS_ENDPOINT = "/users/users";
 
