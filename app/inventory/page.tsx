@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -8,47 +8,59 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { inventoryItems, type InventoryItem } from "@/lib/mock-data"
+import { useProducts } from "@/hooks/inventory-hooks/use-products"
+import { Product } from "@/lib/api/types/inventory-types/inventory.types"
 import { Search, Plus, Package, AlertTriangle, TrendingDown, Filter, Edit, Trash2 } from "lucide-react"
 import { InventoryForm } from "@/components/inventory/inventory-form"
 
 export default function InventoryPage() {
+  const { products, isLoading, fetchProducts, createProduct, updateProduct, deleteProduct } = useProducts()
+
+  // Use useEffect to fetch data on mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchProducts({}) }, [])
+
   const [search, setSearch] = useState("")
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
   const [statusFilter, setStatusFilter] = useState<string>("all")
-  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null)
+  const [selectedItem, setSelectedItem] = useState<Product | null>(null)
   const [showForm, setShowForm] = useState(false)
 
   const categories = useMemo(() => {
-    const cats = new Set(inventoryItems.map((item) => item.category))
+    const cats = new Set((products || []).map((item) => item.categoryName).filter(Boolean))
     return Array.from(cats)
-  }, [])
+  }, [products])
 
   const filteredItems = useMemo(() => {
-    return inventoryItems.filter((item) => {
+    return (products || []).filter((item) => {
       const matchesSearch =
-        item.name.toLowerCase().includes(search.toLowerCase()) || item.code.toLowerCase().includes(search.toLowerCase())
-      const matchesCategory = categoryFilter === "all" || item.category === categoryFilter
+        item.name.toLowerCase().includes(search.toLowerCase()) || 
+        (item.code || "").toLowerCase().includes(search.toLowerCase())
+      
+      const categoryName = item.categoryName || ""
+      const matchesCategory = categoryFilter === "all" || categoryName === categoryFilter
 
+      const currentStock = (item as any).currentStock || 0
       let matchesStatus = true
       if (statusFilter === "low") {
-        matchesStatus = item.currentStock <= item.minStock
+        matchesStatus = currentStock <= item.minimumStock
       } else if (statusFilter === "ok") {
-        matchesStatus = item.currentStock > item.minStock
+        matchesStatus = currentStock > item.minimumStock
       }
 
       return matchesSearch && matchesCategory && matchesStatus
     })
-  }, [search, categoryFilter, statusFilter])
+  }, [products, search, categoryFilter, statusFilter])
 
   const stats = useMemo(() => {
-    const lowStock = inventoryItems.filter((i) => i.currentStock <= i.minStock).length
-    const totalValue = inventoryItems.reduce((acc, i) => acc + i.currentStock * i.unitCost, 0)
-    return { total: inventoryItems.length, lowStock, totalValue }
-  }, [])
+    const lowStock = (products || []).filter((i) => ((i as any).currentStock || 0) <= i.minimumStock).length
+    const totalValue = (products || []).reduce((acc, i) => acc + (((i as any).currentStock || 0) * i.unitCost), 0)
+    return { total: (products || []).length, lowStock, totalValue }
+  }, [products])
 
-  const getStockBadge = (item: InventoryItem) => {
-    if (item.currentStock <= item.minStock) {
+  const getStockBadge = (item: Product) => {
+    const currentStock = (item as any).currentStock || 0
+    if (currentStock <= item.minimumStock) {
       return (
         <Badge variant="destructive" className="gap-1">
           <AlertTriangle className="h-3 w-3" />
@@ -84,6 +96,20 @@ export default function InventoryPage() {
               </DialogHeader>
               <InventoryForm
                 item={selectedItem}
+                onSubmit={async (data: any) => {
+                  try {
+                    if (selectedItem) {
+                      await updateProduct(selectedItem.id, data as any);
+                    } else {
+                      await createProduct(data as any);
+                    }
+                    setShowForm(false);
+                    setSelectedItem(null);
+                    fetchProducts({});
+                  } catch (e) {
+                    console.error("Error saving product", e);
+                  }
+                }}
                 onClose={() => {
                   setShowForm(false)
                   setSelectedItem(null)
@@ -190,12 +216,12 @@ export default function InventoryPage() {
                     <tr key={item.id} className="hover:bg-muted/50">
                       <td className="py-3 font-mono text-sm">{item.code}</td>
                       <td className="py-3 font-medium">{item.name}</td>
-                      <td className="py-3 text-sm text-muted-foreground">{item.category}</td>
+                      <td className="py-3 text-sm text-muted-foreground">{item.categoryName || 'N/A'}</td>
                       <td className="py-3 text-right">
-                        {item.currentStock} {item.unit}
+                        {((item as any).currentStock || 0)} {item.unitOfMeasure || 'Unidades'}
                       </td>
-                      <td className="py-3 text-right text-muted-foreground">{item.minStock}</td>
-                      <td className="py-3 text-right">Q{item.unitCost.toFixed(2)}</td>
+                      <td className="py-3 text-right text-muted-foreground">{item.minimumStock}</td>
+                      <td className="py-3 text-right">Q{(item.unitCost || 0).toFixed(2)}</td>
                       <td className="py-3">{getStockBadge(item)}</td>
                       <td className="py-3">
                         <div className="flex gap-2">
@@ -209,7 +235,7 @@ export default function InventoryPage() {
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="text-destructive">
+                          <Button variant="ghost" size="icon" className="text-destructive" onClick={() => deleteProduct(item.id)}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>

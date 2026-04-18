@@ -40,184 +40,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
-
-// Datos de ejemplo para bodegas
-const mockWarehouses = [
-    {
-        id: "1e959a01-2a1f-4455-988f-e202614fc78f",
-        code: "BODE-QX",
-        name: "Almacén Quirófano Central",
-        location: "Segundo Piso, Zona Estéril",
-        managerId: "9e1e00c0-4f39-44ed-8704-a35befc53925",
-        managerName: "Mario Fernando Fuentes",
-        capacityM3: 30,
-        currentUsageM3: 22.5,
-        temperatureControlled: true,
-        temperatureRange: "2°C - 8°C",
-        isActive: true,
-        productCount: 45,
-        lowStockProducts: 3,
-        createdAt: "2025-12-02T15:15:06.958Z"
-    },
-    {
-        id: "2b959a01-2a1f-4455-988f-e202614fc79g",
-        code: "BODE-PRIN",
-        name: "Bodega Principal",
-        location: "Planta Baja, Ala Norte",
-        managerId: "8e1e00c0-4f39-44ed-8704-a35befc53926",
-        managerName: "Ana Lucía Rodríguez",
-        capacityM3: 150,
-        currentUsageM3: 127.8,
-        temperatureControlled: false,
-        temperatureRange: "Ambiente",
-        isActive: true,
-        productCount: 320,
-        lowStockProducts: 12,
-        createdAt: "2025-11-15T10:30:45.123Z"
-    },
-    {
-        id: "3c959a01-2a1f-4455-988f-e202614fc80h",
-        code: "BODE-FARM",
-        name: "Almacén de Farmacia",
-        location: "Primer Piso, Farmacia Central",
-        managerId: "7e1e00c0-4f39-44ed-8704-a35befc53927",
-        managerName: "Carlos Enrique García",
-        capacityM3: 45,
-        currentUsageM3: 41.2,
-        temperatureControlled: true,
-        temperatureRange: "15°C - 25°C",
-        isActive: true,
-        productCount: 185,
-        lowStockProducts: 8,
-        createdAt: "2025-12-10T08:45:22.789Z"
-    },
-    {
-        id: "4d959a01-2a1f-4455-988f-e202614fc81i",
-        code: "BODE-LAB",
-        name: "Bodega de Laboratorio",
-        location: "Tercer Piso, Laboratorio Clínico",
-        managerId: "6e1e00c0-4f39-44ed-8704-a35befc53928",
-        managerName: "María José Martínez",
-        capacityM3: 25,
-        currentUsageM3: 18.7,
-        temperatureControlled: true,
-        temperatureRange: "-20°C - -80°C",
-        isActive: true,
-        productCount: 67,
-        lowStockProducts: 2,
-        createdAt: "2025-11-28T14:20:33.456Z"
-    },
-    {
-        id: "5e959a01-2a1f-4455-988f-e202614fc82j",
-        code: "BODE-EMER",
-        name: "Almacén de Emergencias",
-        location: "Sótano, Sala de Emergencias",
-        managerId: "5e1e00c0-4f39-44ed-8704-a35befc53929",
-        managerName: "Luis Alberto Sánchez",
-        capacityM3: 60,
-        currentUsageM3: 32.4,
-        temperatureControlled: true,
-        temperatureRange: "2°C - 8°C",
-        isActive: false,
-        productCount: 89,
-        lowStockProducts: 15,
-        createdAt: "2025-10-05T09:15:18.345Z"
-    }
-]
-
-// Datos de ejemplo para stock de productos
-const mockStockDetails = [
-    {
-        id: "1",
-        warehouse_name: "Bodega Principal",
-        warehouse_code: "BODE-PRIN",
-        product_code: "EPP-GNM",
-        product_name: "Guantes de Nitrilo Talla M",
-        category: "Equipo de Protección Personal",
-        current_stock: 200,
-        reserved_quantity: 0,
-        available_quantity: 200,
-        minimum_stock: 70,
-        reorder_point: 120,
-        stock_level: "normal",
-        unit_cost: "5.50",
-        total_value: "1100.00",
-        last_restock: "2025-12-10",
-        expiry_date: "2026-12-01"
-    },
-    {
-        id: "2",
-        warehouse_name: "Almacén de Farmacia",
-        warehouse_code: "BODE-FARM",
-        product_code: "MED-ABX-001",
-        product_name: "Amoxicilina 500mg",
-        category: "Medicamentos",
-        current_stock: 45,
-        reserved_quantity: 15,
-        available_quantity: 30,
-        minimum_stock: 20,
-        reorder_point: 30,
-        stock_level: "low",
-        unit_cost: "0.85",
-        total_value: "38.25",
-        last_restock: "2025-12-01",
-        expiry_date: "2026-06-15"
-    },
-    {
-        id: "3",
-        warehouse_name: "Almacén Quirófano Central",
-        warehouse_code: "BODE-QX",
-        product_code: "INS-SUT-005",
-        product_name: "Sutura Quirúrgica 3-0",
-        category: "Instrumental Quirúrgico",
-        current_stock: 120,
-        reserved_quantity: 40,
-        available_quantity: 80,
-        minimum_stock: 50,
-        reorder_point: 80,
-        stock_level: "normal",
-        unit_cost: "12.75",
-        total_value: "1530.00",
-        last_restock: "2025-12-05",
-        expiry_date: "2027-03-30"
-    },
-    {
-        id: "4",
-        warehouse_name: "Bodega de Laboratorio",
-        warehouse_code: "BODE-LAB",
-        product_code: "LAB-REA-012",
-        product_name: "Reactivo para PCR",
-        category: "Reactivos de Laboratorio",
-        current_stock: 8,
-        reserved_quantity: 2,
-        available_quantity: 6,
-        minimum_stock: 10,
-        reorder_point: 15,
-        stock_level: "critical",
-        unit_cost: "245.00",
-        total_value: "1960.00",
-        last_restock: "2025-11-20",
-        expiry_date: "2026-02-28"
-    },
-    {
-        id: "5",
-        warehouse_name: "Almacén de Emergencias",
-        warehouse_code: "BODE-EMER",
-        product_code: "EQP-DES-003",
-        product_name: "Desfibrilador Portátil",
-        category: "Equipo Médico",
-        current_stock: 3,
-        reserved_quantity: 0,
-        available_quantity: 3,
-        minimum_stock: 2,
-        reorder_point: 3,
-        stock_level: "normal",
-        unit_cost: "1250.00",
-        total_value: "3750.00",
-        last_restock: "2025-11-15",
-        expiry_date: "2028-12-31"
-    }
-]
+import { useWarehouses } from "@/hooks/inventory-hooks/use-warehouses"
+import { useProducts } from "@/hooks/inventory-hooks/use-products"
+// Removed mockWarehouses and mockStockDetails arrays here
 
 // Mock de managers disponibles
 const mockManagers = [
@@ -231,6 +56,9 @@ const mockManagers = [
 ]
 
 export default function WarehousesPage() {
+    const { warehouses, isLoading: isLoadingWarehouses, createWarehouse, updateWarehouse } = useWarehouses()
+    const { products, isLoading: isLoadingProducts } = useProducts()
+
     const [search, setSearch] = useState("")
     const [statusFilter, setStatusFilter] = useState("all")
     const [temperatureFilter, setTemperatureFilter] = useState("all")
@@ -253,7 +81,7 @@ export default function WarehousesPage() {
 
     // Filtrar bodegas
     const filteredWarehouses = useMemo(() => {
-        return mockWarehouses.filter(warehouse => {
+        return warehouses.filter(warehouse => {
             const matchesSearch =
                 warehouse.name.toLowerCase().includes(search.toLowerCase()) ||
                 warehouse.code.toLowerCase().includes(search.toLowerCase()) ||
@@ -271,26 +99,26 @@ export default function WarehousesPage() {
 
             return matchesSearch && matchesStatus && matchesTemperature
         })
-    }, [search, statusFilter, temperatureFilter])
+    }, [warehouses, search, statusFilter, temperatureFilter])
 
     // Estadísticas
     const stats = useMemo(() => {
-        const totalCapacity = mockWarehouses.reduce((sum, w) => sum + w.capacityM3, 0)
-        const totalUsage = mockWarehouses.reduce((sum, w) => sum + w.currentUsageM3, 0)
-        const totalProducts = mockWarehouses.reduce((sum, w) => sum + w.productCount, 0)
-        const totalLowStock = mockWarehouses.reduce((sum, w) => sum + w.lowStockProducts, 0)
+        const totalCapacity = warehouses.reduce((sum, w) => sum + (w.capacityM3 || 0), 0)
+        const totalUsage = warehouses.reduce((sum, w) => sum + ((w as any).currentUsageM3 || 0), 0)
+        const totalProducts = warehouses.reduce((sum, w) => sum + (w.productCount || 0), 0)
+        const totalLowStock = warehouses.reduce((sum, w) => sum + ((w as any).lowStockProducts || 0), 0)
 
         return {
-            totalWarehouses: mockWarehouses.length,
-            activeWarehouses: mockWarehouses.filter(w => w.isActive).length,
+            totalWarehouses: warehouses.length,
+            activeWarehouses: warehouses.filter(w => w.isActive).length,
             totalCapacity,
             totalUsage,
             usagePercentage: totalCapacity > 0 ? (totalUsage / totalCapacity) * 100 : 0,
             totalProducts,
             totalLowStock,
-            avgCapacity: mockWarehouses.length > 0 ? totalCapacity / mockWarehouses.length : 0
+            avgCapacity: warehouses.length > 0 ? totalCapacity / warehouses.length : 0
         }
-    }, [])
+    }, [warehouses])
 
     // Handlers
     const handleEditWarehouse = (warehouse: any) => {
@@ -318,25 +146,37 @@ export default function WarehousesPage() {
         setIsStockDialogOpen(true)
     }
 
-    const handleSaveWarehouse = () => {
-        console.log("Guardando bodega:", warehouseForm)
-        setIsWarehouseDialogOpen(false)
-        setSelectedWarehouse(null)
-        setWarehouseForm({
-            code: "",
-            name: "",
-            location: "",
-            managerId: "",
-            capacityM3: "",
-            temperatureControlled: false,
-            temperatureRange: "",
-            isActive: true
-        })
+    const handleSaveWarehouse = async () => {
+        try {
+            const payload = {
+                ...warehouseForm,
+                capacityM3: Number(warehouseForm.capacityM3) || 0,
+            }
+            if (selectedWarehouse) {
+                await updateWarehouse(selectedWarehouse.id, payload as any)
+            } else {
+                await createWarehouse(payload as any)
+            }
+            setIsWarehouseDialogOpen(false)
+            setSelectedWarehouse(null)
+            setWarehouseForm({
+                code: "",
+                name: "",
+                location: "",
+                managerId: "",
+                capacityM3: "",
+                temperatureControlled: false,
+                temperatureRange: "",
+                isActive: true
+            })
+        } catch (error) {
+            console.error("Error saving warehouse", error)
+        }
     }
 
     // Calcular nivel de uso
     const getUsagePercentage = (warehouse: any) => {
-        return warehouse.capacityM3 > 0 ? (warehouse.currentUsageM3 / warehouse.capacityM3) * 100 : 0
+        return warehouse.capacityM3 > 0 ? (((warehouse as any).currentUsageM3 || 0) / warehouse.capacityM3) * 100 : 0
     }
 
     // Obtener color según nivel de stock
@@ -584,7 +424,7 @@ export default function WarehousesPage() {
                             <div>
                                 <p className="text-sm text-muted-foreground">Bodegas Frías</p>
                                 <p className="text-2xl font-bold">
-                                    {mockWarehouses.filter(w => w.temperatureControlled).length}
+                                    {warehouses.filter(w => w.temperatureControlled).length}
                                 </p>
                                 <p className="text-xs text-muted-foreground">
                                     Control de temperatura
@@ -699,7 +539,7 @@ export default function WarehousesPage() {
                                                     <TableCell>
                                                         <div className="space-y-1">
                                                             <div className="flex justify-between text-xs">
-                                                                <span>{warehouse.currentUsageM3.toFixed(1)}/{warehouse.capacityM3} m³</span>
+                                                                <span>{((warehouse as any).currentUsageM3 || 0).toFixed(1)}/{warehouse.capacityM3} m³</span>
                                                                 <span>{usagePercentage.toFixed(0)}%</span>
                                                             </div>
                                                             <Progress value={usagePercentage} className="h-2" />
@@ -717,10 +557,10 @@ export default function WarehousesPage() {
                                                                 <Package className="h-3 w-3 text-muted-foreground" />
                                                                 <span className="text-sm">{warehouse.productCount} productos</span>
                                                             </div>
-                                                            {warehouse.lowStockProducts > 0 && (
+                                                            {((warehouse as any).lowStockProducts || 0) > 0 && (
                                                                 <Badge variant="outline" className="w-fit gap-1 text-xs bg-warning/10 text-warning">
                                                                     <AlertTriangle className="h-3 w-3" />
-                                                                    {warehouse.lowStockProducts} bajo stock
+                                                                    {((warehouse as any).lowStockProducts || 0)} bajo stock
                                                                 </Badge>
                                                             )}
                                                         </div>
@@ -732,7 +572,7 @@ export default function WarehousesPage() {
                                                             </Badge>
                                                             {warehouse.temperatureControlled && (
                                                                 <Badge variant="outline" className="text-xs">
-                                                                    {warehouse.temperatureRange}
+                                                                    {(warehouse as any).temperatureRange || "N/A"}
                                                                 </Badge>
                                                             )}
                                                         </div>
@@ -845,62 +685,60 @@ export default function WarehousesPage() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {mockStockDetails
-                                            .filter(product =>
-                                                !selectedWarehouse || product.warehouse_code === selectedWarehouse.code
-                                            )
+                                        {products
+                                            // TODO: Modificar cuando haya endpoint de stock por bodega
                                             .map((product) => (
                                                 <TableRow key={product.id}>
                                                     <TableCell>
                                                         <div className="flex flex-col">
-                                                            <span className="font-medium">{product.product_name}</span>
+                                                            <span className="font-medium">{product.name}</span>
                                                             <span className="text-xs text-muted-foreground font-mono">
-                                                                {product.product_code}
+                                                                {product.code}
                                                             </span>
                                                         </div>
                                                     </TableCell>
                                                     <TableCell>
                                                         <Badge variant="outline" className="text-xs">
-                                                            {product.category}
+                                                            {product.categoryName}
                                                         </Badge>
                                                     </TableCell>
                                                     <TableCell>
                                                         <div className="flex items-center gap-2">
                                                             <Badge variant="outline" className="font-mono text-xs">
-                                                                {product.warehouse_code}
+                                                                N/A
                                                             </Badge>
                                                             <span className="text-sm text-muted-foreground">
-                                                                {product.warehouse_name}
+                                                                Global (Todas)
                                                             </span>
                                                         </div>
                                                     </TableCell>
                                                     <TableCell className="text-right">
                                                         <div className="flex flex-col items-end">
-                                                            <span className="font-medium">{product.current_stock} units</span>
+                                                            <span className="font-medium">N/A units</span>
                                                             <span className="text-xs text-muted-foreground">
-                                                                {product.reserved_quantity} reservados
+                                                                0 reservados
                                                             </span>
                                                         </div>
                                                     </TableCell>
                                                     <TableCell className="text-right">
                                                         <div className="flex flex-col items-end">
-                                                            <span className="font-medium">{product.available_quantity}</span>
+                                                            <span className="font-medium">N/A</span>
                                                             <div className="text-xs text-muted-foreground">
-                                                                Mín: {product.minimum_stock} | Reorden: {product.reorder_point}
+                                                                Mín: {product.minimumStock} | Reorden: {product.reorderPoint}
                                                             </div>
                                                         </div>
                                                     </TableCell>
                                                     <TableCell>
-                                                        <Badge className={`gap-1 ${getStockLevelColor(product.stock_level)}`}>
-                                                            {getStockLevelIcon(product.stock_level)}
-                                                            {product.stock_level.toUpperCase()}
+                                                        <Badge className={`gap-1 ${getStockLevelColor("normal")}`}>
+                                                            {getStockLevelIcon("normal")}
+                                                            NORMAL
                                                         </Badge>
                                                     </TableCell>
                                                     <TableCell className="text-right">
                                                         <div className="flex flex-col items-end">
-                                                            <span className="font-medium">Q{product.total_value}</span>
+                                                            <span className="font-medium">Q{product.unitCost}</span>
                                                             <span className="text-xs text-muted-foreground">
-                                                                Q{product.unit_cost}/unit
+                                                                Q{product.unitCost}/unit
                                                             </span>
                                                         </div>
                                                     </TableCell>
@@ -944,26 +782,26 @@ export default function WarehousesPage() {
                                     {/* Header del producto */}
                                     <div className="flex items-start justify-between">
                                         <div>
-                                            <h3 className="text-lg font-semibold">{selectedStock.product_name}</h3>
+                                            <h3 className="text-lg font-semibold">{selectedStock.name}</h3>
                                             <div className="flex items-center gap-2 mt-1">
                                                 <Badge variant="outline" className="font-mono">
-                                                    {selectedStock.product_code}
+                                                    {selectedStock.code}
                                                 </Badge>
                                                 <Badge variant="outline">
-                                                    {selectedStock.category}
+                                                    {selectedStock.categoryName}
                                                 </Badge>
-                                                <Badge className={`gap-1 ${getStockLevelColor(selectedStock.stock_level)}`}>
-                                                    {getStockLevelIcon(selectedStock.stock_level)}
-                                                    {selectedStock.stock_level.toUpperCase()}
+                                                <Badge className={`gap-1 ${getStockLevelColor("normal")}`}>
+                                                    {getStockLevelIcon("normal")}
+                                                    NORMAL
                                                 </Badge>
                                             </div>
                                         </div>
                                         <div className="text-right">
                                             <div className="text-2xl font-bold text-primary">
-                                                Q{selectedStock.total_value}
+                                                Q{selectedStock.unitCost}
                                             </div>
                                             <div className="text-sm text-muted-foreground">
-                                                Q{selectedStock.unit_cost} por unidad
+                                                Q{selectedStock.unitCost} por unidad
                                             </div>
                                         </div>
                                     </div>
@@ -978,12 +816,12 @@ export default function WarehousesPage() {
                                                 <div className="space-y-2 text-sm">
                                                     <div className="flex justify-between">
                                                         <span className="text-muted-foreground">Bodega:</span>
-                                                        <span className="font-medium">{selectedStock.warehouse_name}</span>
+                                                        <span className="font-medium">Global (Todas las bodegas)</span>
                                                     </div>
                                                     <div className="flex justify-between">
                                                         <span className="text-muted-foreground">Código:</span>
                                                         <Badge variant="outline" className="font-mono">
-                                                            {selectedStock.warehouse_code}
+                                                            N/A
                                                         </Badge>
                                                     </div>
                                                 </div>
@@ -993,12 +831,12 @@ export default function WarehousesPage() {
                                                 <h4 className="font-medium mb-2">Información de Stock</h4>
                                                 <div className="space-y-2 text-sm">
                                                     <div className="flex justify-between">
-                                                        <span className="text-muted-foreground">Último reabastecimiento:</span>
-                                                        <span>{new Date(selectedStock.last_restock).toLocaleDateString('es-GT')}</span>
+                                                        <span className="text-muted-foreground">Última actualización:</span>
+                                                        <span>{selectedStock.updatedAt ? new Date(selectedStock.updatedAt).toLocaleDateString('es-GT') : 'N/A'}</span>
                                                     </div>
                                                     <div className="flex justify-between">
                                                         <span className="text-muted-foreground">Fecha de vencimiento:</span>
-                                                        <span>{new Date(selectedStock.expiry_date).toLocaleDateString('es-GT')}</span>
+                                                        <span>N/A</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1011,10 +849,10 @@ export default function WarehousesPage() {
                                                     <div>
                                                         <div className="flex justify-between text-sm mb-1">
                                                             <span>Stock Actual</span>
-                                                            <span className="font-medium">{selectedStock.current_stock} unidades</span>
+                                                            <span className="font-medium">N/A unidades</span>
                                                         </div>
                                                         <Progress
-                                                            value={(selectedStock.current_stock / selectedStock.reorder_point) * 100}
+                                                            value={0}
                                                             className="h-2"
                                                         />
                                                     </div>
@@ -1023,44 +861,30 @@ export default function WarehousesPage() {
                                                         <div className="text-center p-2 bg-muted rounded-lg">
                                                             <div className="text-xs text-muted-foreground">Disponible</div>
                                                             <div className="text-xl font-bold text-success">
-                                                                {selectedStock.available_quantity}
+                                                                N/A
                                                             </div>
                                                         </div>
                                                         <div className="text-center p-2 bg-muted rounded-lg">
                                                             <div className="text-xs text-muted-foreground">Reservado</div>
                                                             <div className="text-xl font-bold text-warning">
-                                                                {selectedStock.reserved_quantity}
+                                                                N/A
                                                             </div>
                                                         </div>
                                                         <div className="text-center p-2 bg-muted rounded-lg">
                                                             <div className="text-xs text-muted-foreground">Mínimo</div>
                                                             <div className="text-xl font-bold">
-                                                                {selectedStock.minimum_stock}
+                                                                {selectedStock.minimumStock}
                                                             </div>
                                                         </div>
                                                     </div>
 
-                                                    <Alert variant={selectedStock.stock_level === "critical" ? "destructive" : "default"}>
-                                                        {selectedStock.stock_level === "critical" ? (
-                                                            <AlertTriangle className="h-4 w-4" />
-                                                        ) : selectedStock.stock_level === "low" ? (
-                                                            <TrendingDown className="h-4 w-4" />
-                                                        ) : (
-                                                            <CheckCircle className="h-4 w-4" />
-                                                        )}
+                                                    <Alert variant="default">
+                                                        <CheckCircle className="h-4 w-4" />
                                                         <AlertTitle>
-                                                            {selectedStock.stock_level === "critical"
-                                                                ? "¡Stock Crítico!"
-                                                                : selectedStock.stock_level === "low"
-                                                                    ? "Stock Bajo"
-                                                                    : "Stock Normal"}
+                                                            Stock Normal
                                                         </AlertTitle>
                                                         <AlertDescription>
-                                                            {selectedStock.stock_level === "critical"
-                                                                ? `El stock está por debajo del mínimo (${selectedStock.minimum_stock}). Se requiere reabastecimiento inmediato.`
-                                                                : selectedStock.stock_level === "low"
-                                                                    ? `El stock está por debajo del punto de reorden (${selectedStock.reorder_point}). Planificar reabastecimiento.`
-                                                                    : "El stock se encuentra en niveles normales."}
+                                                            El stock se encuentra en niveles normales o esta información aún no está sincronizada.
                                                         </AlertDescription>
                                                     </Alert>
                                                 </div>

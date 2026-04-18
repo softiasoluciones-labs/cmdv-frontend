@@ -10,6 +10,8 @@ export type { ApiRequestConfig, ApiResponse, PaginatedResponse } from "./config"
 
 // Types
 export * from "./types";
+export * from "./types/inventory-types/inventory.types";
 
-// Services
+// Servicesß
 export * from "./services";
+export * from "./services/inventory-services/warehouseService";

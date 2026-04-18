@@ -9,7 +9,6 @@ import { useState, useEffect, useCallback } from "react";
 import {
     userService,
     ApiUser,
-    UsersListResponse,
     UsersQueryParams,
     UsersStats,
     ApiError,

@@ -1,15 +1,15 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Roboto, Roboto_Mono } from "next/font/google"
+import { DM_Sans, Roboto_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { AuthProvider } from "@/lib/context/auth-context"
 import "./globals.css"
 
-// Configuración con Roboto - clásica y profesional
-const roboto = Roboto({
+// Configuración con DM Sans - moderna
+const dmSans = DM_Sans({
   subsets: ["latin"],
   weight: ['300', '400', '500', '700'],
-  variable: '--font-roboto'
+  variable: '--font-dm-sans'
 })
 
 const robotoMono = Roboto_Mono({
@@ -46,7 +46,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="es" className={`${roboto.variable} ${robotoMono.variable}`}>
+    <html lang="es" className={`${dmSans.variable} ${robotoMono.variable}`}>
       <body className={`font-sans antialiased`}>
         <AuthProvider>
           {children}

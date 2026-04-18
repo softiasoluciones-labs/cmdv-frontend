@@ -7,33 +7,32 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import type { InventoryItem } from "@/lib/mock-data"
+import type { Product } from "@/lib/api/types/inventory-types/inventory.types"
 
 interface InventoryFormProps {
-  item?: InventoryItem | null
+  item?: Product | null
+  onSubmit: (data: any) => void
   onClose: () => void
 }
 
 const categories = ["Medicamentos", "Insumos Quirúrgicos", "Equipo Médico", "Consumibles", "Laboratorio"]
 const units = ["unidades", "cajas", "frascos", "paquetes", "litros", "ml"]
 
-export function InventoryForm({ item, onClose }: InventoryFormProps) {
+export function InventoryForm({ item, onSubmit, onClose }: InventoryFormProps) {
   const [formData, setFormData] = useState({
     code: item?.code || "",
     name: item?.name || "",
-    category: item?.category || "",
-    currentStock: item?.currentStock || 0,
-    minStock: item?.minStock || 0,
+    categoryName: item?.categoryName || "",
+    currentStock: (item as any)?.currentStock || 0,
+    minimumStock: item?.minimumStock || 0,
     unitCost: item?.unitCost || 0,
-    unit: item?.unit || "unidades",
-    supplier: item?.supplier || "",
+    unitOfMeasure: item?.unitOfMeasure || "unidades",
+    supplier: (item as any)?.supplier || "",
   })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    // In a real app, this would save to the database
-    console.log("Saving item:", formData)
-    onClose()
+    onSubmit(formData)
   }
 
   return (
@@ -64,7 +63,7 @@ export function InventoryForm({ item, onClose }: InventoryFormProps) {
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label>Categoría</Label>
-          <Select value={formData.category} onValueChange={(v) => setFormData({ ...formData, category: v })}>
+          <Select value={formData.categoryName} onValueChange={(v) => setFormData({ ...formData, categoryName: v })}>
             <SelectTrigger>
               <SelectValue placeholder="Seleccionar" />
             </SelectTrigger>
@@ -79,7 +78,7 @@ export function InventoryForm({ item, onClose }: InventoryFormProps) {
         </div>
         <div className="space-y-2">
           <Label>Unidad</Label>
-          <Select value={formData.unit} onValueChange={(v) => setFormData({ ...formData, unit: v })}>
+          <Select value={formData.unitOfMeasure} onValueChange={(v) => setFormData({ ...formData, unitOfMeasure: v })}>
             <SelectTrigger>
               <SelectValue placeholder="Seleccionar" />
             </SelectTrigger>
@@ -107,12 +106,12 @@ export function InventoryForm({ item, onClose }: InventoryFormProps) {
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="minStock">Stock Mínimo</Label>
+          <Label htmlFor="minimumStock">Stock Mínimo</Label>
           <Input
-            id="minStock"
+            id="minimumStock"
             type="number"
-            value={formData.minStock}
-            onChange={(e) => setFormData({ ...formData, minStock: Number(e.target.value) })}
+            value={formData.minimumStock}
+            onChange={(e) => setFormData({ ...formData, minimumStock: Number(e.target.value) })}
             min={0}
             required
           />
