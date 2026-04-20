@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { DM_Sans, Roboto_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { AuthProvider } from "@/lib/context/auth-context"
+import { Toaster } from "@/components/ui/sonner"
 import "./globals.css"
 
 // Configuración con DM Sans - moderna
@@ -50,6 +51,7 @@ export default function RootLayout({
       <body className={`font-sans antialiased`}>
         <AuthProvider>
           {children}
+          <Toaster position="top-right" richColors closeButton />
         </AuthProvider>
         {/*<Analytics />*/}
       </body>

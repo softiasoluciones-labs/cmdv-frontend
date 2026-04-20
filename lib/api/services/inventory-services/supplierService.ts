@@ -1,5 +1,5 @@
 import { api } from "../../client";
-import { Supplier, SupplierQueryParams } from "../../types/inventory-types/inventory.types";
+import { editSupplierData, Supplier, SupplierQueryParams } from "../../types/inventory-types/inventory.types";
 
 const MEDICAL_SUPPLIER_ENDPOINT = "/inventory/suppliers/"
 
@@ -31,14 +31,14 @@ export const supplierService = {
     /**
      * Create new medical supplier
      */
-    createSupplier: async (supplierData: Supplier) => {
+    createSupplier: async (supplierData: editSupplierData) => {
         return api.post<Supplier>(MEDICAL_SUPPLIER_ENDPOINT, supplierData);
     },
 
     /**
      * Update data supplier
      */
-    updateSupplier: async (id: string, supplierData: Supplier) => {
+    updateSupplier: async (id: string, supplierData: editSupplierData) => {
         return api.put<Supplier>(`${MEDICAL_SUPPLIER_ENDPOINT}${id}`, supplierData);
     },
 

@@ -86,6 +86,21 @@ export interface Supplier {
     isActive: boolean;
 }
 
+export interface editSupplierData { 
+    id: string;
+    code: string;
+    name: string;
+    paymentTerms: string;
+    contactName: string;
+    email: string;
+    phone: string;
+    address: string;
+    city: string;
+    country: string;
+    taxId: string;
+    creditLimit: number;
+}
+
 export interface SupplierQueryParams {
     activeOnly?: boolean;
 }

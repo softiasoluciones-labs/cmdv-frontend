@@ -34,7 +34,7 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
-  ],
+, "components/inventory/StatCard.jsx"  ],
   "exclude": [
     "node_modules"
   ]
