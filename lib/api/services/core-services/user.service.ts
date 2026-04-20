@@ -72,4 +72,14 @@ export const userService = {
             password: newPassword,
         });
     },
+
+    /**
+     * Get users by role (e.g., warehouse_manager)
+     */
+    getUsersByRole: async (role: string) => {
+        return api.get<{ total: number; users: ApiUser[] }>(
+            `${USERS_ENDPOINT}/by-role`,
+            { role }
+        );
+    },
 };

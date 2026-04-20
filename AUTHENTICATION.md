@@ -251,10 +251,10 @@ function LogoutButton() {
 
 ## 🔄 Integración con API Existente
 
-### **Antes (Token Hardcodeado)**
+### **Antes (Token Hardcodeado — eliminado)**
 ```typescript
 // lib/api/config.ts
-const TEMP_TOKEN = "eyJhbGci...";
+const TEMP_TOKEN = "<redacted>"; // nunca commitear tokens reales
 
 export const API_CONFIG = {
   baseUrl: "http://localhost:3000/api/v1",

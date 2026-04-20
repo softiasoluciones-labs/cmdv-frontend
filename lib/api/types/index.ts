@@ -4,4 +4,4 @@
  */
 
 export * from "./core-types/user.types";
-export * from "./auth.types";
+export * from "./auth-types/auth.types";

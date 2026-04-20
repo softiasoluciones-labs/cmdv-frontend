@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -32,97 +32,19 @@ import {
     CreditCard,
     Calendar,
     CheckCircle,
-    XCircle
+    XCircle,
+    Loader2,
+    AlertTriangle
 } from "lucide-react"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { useSuppliers } from "@/hooks/inventory-hooks/use-suppliers";
 
 export default function SuppliersPage() {
     const [searchQuery, setSearchQuery] = useState("")
     const [statusFilter, setStatusFilter] = useState<string>("all")
     const [paymentFilter, setPaymentFilter] = useState<string>("all")
 
-    // Mock data basado en la respuesta del API
-    const suppliers = [
-        {
-            id: "c5a6c245-0fb1-4f27-88c9-abbbba5d1185",
-            code: "DISA-GT",
-            name: "Distribuidora SaludGuate, S.A.",
-            contactName: "Lic. Ricardo Monzón",
-            email: "ventas@saludguate.com",
-            phone: "2255-0000",
-            address: "Avenida Reforma 10-50, Zona 9",
-            city: "Guatemala",
-            state: "Guatemala",
-            taxId: "NIT-1234567-8",
-            paymentTerms: "immediate",
-            creditLimit: 50000,
-            isActive: true,
-            createdAt: "2024-01-15T10:30:00"
-        },
-        {
-            id: "a3b4c567-8d90-1e23-f456-7890abcdef12",
-            code: "FARMEX",
-            name: "Farmacéutica Mexicana de Guatemala",
-            contactName: "Ing. Carlos Hernández",
-            email: "compras@farmex.com.gt",
-            phone: "2233-4455",
-            address: "Calzada Roosevelt 25-30, Zona 11",
-            city: "Guatemala",
-            state: "Guatemala",
-            taxId: "NIT-8765432-1",
-            paymentTerms: "net_30",
-            creditLimit: 100000,
-            isActive: true,
-            createdAt: "2024-01-10T14:20:00"
-        },
-        {
-            id: "b2c3d456-7e89-0f12-g345-6789abcdef01",
-            code: "LABTEC",
-            name: "Laboratorios Técnicos, S.A.",
-            contactName: "Dra. Marta López",
-            email: "info@labtec.gt",
-            phone: "2324-5656",
-            address: "12 Avenida 15-65, Zona 1",
-            city: "Guatemala",
-            state: "Guatemala",
-            taxId: "NIT-5555555-5",
-            paymentTerms: "net_15",
-            creditLimit: 30000,
-            isActive: false,
-            createdAt: "2024-01-05T09:15:00"
-        },
-        {
-            id: "d4e5f678-9a01-bc23-h456-7890abcdef34",
-            code: "MEDEQUIP",
-            name: "Equipos Médicos Internacionales",
-            contactName: "Sr. Roberto García",
-            email: "ventas@medequip.com",
-            phone: "2244-7788",
-            address: "5a. Calle 8-40, Zona 10",
-            city: "Guatemala",
-            state: "Guatemala",
-            taxId: "NIT-9876543-2",
-            paymentTerms: "immediate",
-            creditLimit: 75000,
-            isActive: true,
-            createdAt: "2024-01-12T16:45:00"
-        },
-        {
-            id: "e5f6g789-0a12-cd34-i567-8901abcdef45",
-            code: "INSUTEC",
-            name: "Insumos Técnicos Hospitalarios",
-            contactName: "Lic. Patricia Ramírez",
-            email: "cotizaciones@insutec.gt",
-            phone: "2277-8899",
-            address: "7a. Avenida 12-25, Zona 4",
-            city: "Guatemala",
-            state: "Guatemala",
-            taxId: "NIT-3333333-3",
-            paymentTerms: "net_60",
-            creditLimit: 150000,
-            isActive: true,
-            createdAt: "2024-01-08T11:30:00"
-        }
-    ]
+    const { suppliers, loading: isLoadingSuppliers, error: suppliersError, createSupplier, updateSupplier, deleteSupplier } = useSuppliers()
 
     // Nuevo proveedor
     const [newSupplier, setNewSupplier] = useState({
@@ -162,7 +84,7 @@ export default function SuppliersPage() {
     }
 
     // Filtrar proveedores
-    const filteredSuppliers = suppliers.filter(supplier => {
+    const filteredSuppliers = useMemo(() => suppliers.filter(supplier => {
         const matchesSearch =
             supplier.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             supplier.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -179,7 +101,7 @@ export default function SuppliersPage() {
             supplier.paymentTerms === paymentFilter
 
         return matchesSearch && matchesStatus && matchesPayment
-    })
+    }), [suppliers, searchQuery, statusFilter, paymentFilter])
 
     const handleCreateSupplier = () => {
         console.log("Creando proveedor:", newSupplier)
@@ -363,7 +285,25 @@ export default function SuppliersPage() {
                     </div>
                 </div>
 
+                {/* Loading State */}
+                {isLoadingSuppliers && (
+                    <div className="flex items-center justify-center py-12">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        <span className="ml-3 text-muted-foreground">Cargando proveedores...</span>
+                    </div>
+                )}
+
+                {/* Error State */}
+                {suppliersError && (
+                    <Alert variant="destructive">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertTitle>Error al cargar proveedores</AlertTitle>
+                        <AlertDescription>{suppliersError.message}</AlertDescription>
+                    </Alert>
+                )}
+
                 {/* Estadísticas rápidas */}
+                {!isLoadingSuppliers && !suppliersError && (
                 <div className="grid gap-6 md:grid-cols-4">
                     <Card>
                         <CardContent className="p-6">
@@ -417,6 +357,7 @@ export default function SuppliersPage() {
                         </CardContent>
                     </Card>
                 </div>
+                )}
 
                 {/* Tabla de proveedores con filtros integrados */}
                 <Card>

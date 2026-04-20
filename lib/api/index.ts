@@ -12,6 +12,6 @@ export type { ApiRequestConfig, ApiResponse, PaginatedResponse } from "./config"
 export * from "./types";
 export * from "./types/inventory-types/inventory.types";
 
-// Servicesß
+// Services
 export * from "./services";
 export * from "./services/inventory-services/warehouseService";

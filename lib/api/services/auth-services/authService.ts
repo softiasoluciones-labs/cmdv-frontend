@@ -3,8 +3,8 @@
  * API service for authentication operations
  */
 
-import { LoginRequest, LoginResponse, RefreshTokenRequest, RefreshTokenResponse } from "../types";
-import { API_CONFIG, ApiError, ApiResponse } from "../config";
+import { LoginRequest, LoginResponse, RefreshTokenRequest, RefreshTokenResponse } from "../../types";
+import { API_CONFIG, ApiError, ApiResponse } from "../../config";
 
 const AUTH_ENDPOINT = "/auth";
 

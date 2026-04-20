@@ -20,7 +20,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
 import { Permission, ApiRole } from "@/lib/api/types/core-types/user.types"
-import { useRoles } from "@/hooks/use-roles"
+import { useRoles } from "@/hooks/core-hooks/use-roles"
 import { roleService } from "@/lib/api"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 

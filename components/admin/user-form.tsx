@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, AlertCircle } from "lucide-react"
 import { ApiUser, UserRole, userService, ApiError } from "@/lib/api"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuth } from "@/hooks/auth-hooks/use-auth"
 
 interface UserFormProps {
   user?: ApiUser | null

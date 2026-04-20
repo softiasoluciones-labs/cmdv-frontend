@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Search, Plus, Users, Shield, UserCheck, UserX, Edit, Trash2, Key, Loader2, AlertCircle, RefreshCw } from "lucide-react"
 import { UserForm } from "@/components/admin/user-form"
-import { useUsers } from "@/hooks/use-users"
+import { useUsers } from "@/hooks/core-hooks/use-users"
 import { ApiUser, UserRole, UsersQueryParams } from "@/lib/api"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 

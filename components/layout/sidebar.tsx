@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuth } from "@/hooks/auth-hooks/use-auth"
 import {
   LayoutDashboard,
   Users,

@@ -56,6 +56,7 @@ export interface Warehouse {
     managerName: string;
     capacityM3: number;
     temperatureControlled: boolean;
+    temperatureRange?: string;
     productCount: number;
     isActive: boolean;
     createdAt: string; // ISO date
@@ -63,3 +64,31 @@ export interface Warehouse {
 
 
 /*****************************************************************/
+
+
+/*****************************************************************/
+/**
+ * Suppliers interfaces
+ */
+export interface Supplier {
+    id: string;
+    code: string;
+    name: string;
+    contactName: string;
+    email: string;
+    phone: string;
+    address: string;
+    city: string;
+    state: string;
+    taxId: string;
+    paymentTerms: string;
+    creditLimit: number;
+    isActive: boolean;
+}
+
+export interface SupplierQueryParams {
+    activeOnly?: boolean;
+}
+
+/*****************************************************************/
+

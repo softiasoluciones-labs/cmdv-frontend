@@ -34,7 +34,8 @@ import {
     TrendingUp,
     MapPin,
     ThermometerSnowflake,
-    ThermometerSun
+    ThermometerSun,
+    Loader2
 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -42,22 +43,12 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { useWarehouses } from "@/hooks/inventory-hooks/use-warehouses"
 import { useProducts } from "@/hooks/inventory-hooks/use-products"
-// Removed mockWarehouses and mockStockDetails arrays here
-
-// Mock de managers disponibles
-const mockManagers = [
-    { id: "9e1e00c0-4f39-44ed-8704-a35befc53925", name: "Mario Fernando Fuentes" },
-    { id: "8e1e00c0-4f39-44ed-8704-a35befc53926", name: "Ana Lucía Rodríguez" },
-    { id: "7e1e00c0-4f39-44ed-8704-a35befc53927", name: "Carlos Enrique García" },
-    { id: "6e1e00c0-4f39-44ed-8704-a35befc53928", name: "María José Martínez" },
-    { id: "5e1e00c0-4f39-44ed-8704-a35befc53929", name: "Luis Alberto Sánchez" },
-    { id: "4e1e00c0-4f39-44ed-8704-a35befc53930", name: "Patricia Elizabeth López" },
-    { id: "3e1e00c0-4f39-44ed-8704-a35befc53931", name: "Roberto Antonio Díaz" }
-]
+import { useManagers } from "@/hooks/core-hooks/use-managers"
 
 export default function WarehousesPage() {
-    const { warehouses, isLoading: isLoadingWarehouses, createWarehouse, updateWarehouse } = useWarehouses()
+    const { warehouses, isLoading: isLoadingWarehouses, error: warehousesError, createWarehouse, updateWarehouse } = useWarehouses()
     const { products, isLoading: isLoadingProducts } = useProducts()
+    const { managers, isLoading: isLoadingManagers } = useManagers()
 
     const [search, setSearch] = useState("")
     const [statusFilter, setStatusFilter] = useState("all")
@@ -104,18 +95,13 @@ export default function WarehousesPage() {
     // Estadísticas
     const stats = useMemo(() => {
         const totalCapacity = warehouses.reduce((sum, w) => sum + (w.capacityM3 || 0), 0)
-        const totalUsage = warehouses.reduce((sum, w) => sum + ((w as any).currentUsageM3 || 0), 0)
         const totalProducts = warehouses.reduce((sum, w) => sum + (w.productCount || 0), 0)
-        const totalLowStock = warehouses.reduce((sum, w) => sum + ((w as any).lowStockProducts || 0), 0)
 
         return {
             totalWarehouses: warehouses.length,
             activeWarehouses: warehouses.filter(w => w.isActive).length,
             totalCapacity,
-            totalUsage,
-            usagePercentage: totalCapacity > 0 ? (totalUsage / totalCapacity) * 100 : 0,
             totalProducts,
-            totalLowStock,
             avgCapacity: warehouses.length > 0 ? totalCapacity / warehouses.length : 0
         }
     }, [warehouses])
@@ -130,7 +116,7 @@ export default function WarehousesPage() {
             managerId: warehouse.managerId,
             capacityM3: warehouse.capacityM3.toString(),
             temperatureControlled: warehouse.temperatureControlled,
-            temperatureRange: warehouse.temperatureRange,
+            temperatureRange: warehouse.temperatureRange || "",
             isActive: warehouse.isActive
         })
         setIsWarehouseDialogOpen(true)
@@ -174,9 +160,13 @@ export default function WarehousesPage() {
         }
     }
 
-    // Calcular nivel de uso
-    const getUsagePercentage = (warehouse: any) => {
-        return warehouse.capacityM3 > 0 ? (((warehouse as any).currentUsageM3 || 0) / warehouse.capacityM3) * 100 : 0
+    // Formatear fecha
+    const formatDate = (dateString: string) => {
+        return new Date(dateString).toLocaleDateString('es-GT', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        })
     }
 
     // Obtener color según nivel de stock
@@ -290,12 +280,13 @@ export default function WarehousesPage() {
                                             <Select
                                                 value={warehouseForm.managerId}
                                                 onValueChange={(value) => setWarehouseForm({ ...warehouseForm, managerId: value })}
+                                                disabled={isLoadingManagers}
                                             >
                                                 <SelectTrigger>
-                                                    <SelectValue placeholder="Seleccionar encargado" />
+                                                    <SelectValue placeholder={isLoadingManagers ? "Cargando encargados..." : "Seleccionar encargado"} />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    {mockManagers.map(manager => (
+                                                    {managers.map(manager => (
                                                         <SelectItem key={manager.id} value={manager.id}>
                                                             {manager.name}
                                                         </SelectItem>
@@ -372,67 +363,86 @@ export default function WarehousesPage() {
                     </div>
                 </div>
 
+                {/* Loading State */}
+                {isLoadingWarehouses && (
+                    <div className="flex items-center justify-center py-12">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        <span className="ml-3 text-muted-foreground">Cargando bodegas...</span>
+                    </div>
+                )}
+
+                {/* Error State */}
+                {warehousesError && (
+                    <Alert variant="destructive">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertTitle>Error al cargar bodegas</AlertTitle>
+                        <AlertDescription>{warehousesError}</AlertDescription>
+                    </Alert>
+                )}
+
                 {/* Stats Cards */}
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    <Card>
-                        <CardContent className="flex items-center gap-4 p-4">
-                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                                <Warehouse className="h-6 w-6 text-primary" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-muted-foreground">Total Bodegas</p>
-                                <p className="text-2xl font-bold">{stats.totalWarehouses}</p>
-                                <p className="text-xs text-muted-foreground">
-                                    {stats.activeWarehouses} activas
-                                </p>
-                            </div>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardContent className="flex items-center gap-4 p-4">
-                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-success/10">
-                                <Box className="h-6 w-6 text-success" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-muted-foreground">Capacidad Total</p>
-                                <p className="text-2xl font-bold">{stats.totalCapacity.toFixed(1)} m³</p>
-                                <p className="text-xs text-muted-foreground">
-                                    {stats.usagePercentage.toFixed(1)}% en uso
-                                </p>
-                            </div>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardContent className="flex items-center gap-4 p-4">
-                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-warning/10">
-                                <Package className="h-6 w-6 text-warning" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-muted-foreground">Total Productos</p>
-                                <p className="text-2xl font-bold">{stats.totalProducts}</p>
-                                <p className="text-xs text-muted-foreground">
-                                    {stats.totalLowStock} con stock bajo
-                                </p>
-                            </div>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardContent className="flex items-center gap-4 p-4">
-                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-500/10">
-                                <Thermometer className="h-6 w-6 text-purple-600" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-muted-foreground">Bodegas Frías</p>
-                                <p className="text-2xl font-bold">
-                                    {warehouses.filter(w => w.temperatureControlled).length}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                    Control de temperatura
-                                </p>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
+                {!isLoadingWarehouses && !warehousesError && (
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        <Card>
+                            <CardContent className="flex items-center gap-4 p-4">
+                                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                                    <Warehouse className="h-6 w-6 text-primary" />
+                                </div>
+                                <div>
+                                    <p className="text-sm text-muted-foreground">Total Bodegas</p>
+                                    <p className="text-2xl font-bold">{stats.totalWarehouses}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        {stats.activeWarehouses} activas
+                                    </p>
+                                </div>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardContent className="flex items-center gap-4 p-4">
+                                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-success/10">
+                                    <Box className="h-6 w-6 text-success" />
+                                </div>
+                                <div>
+                                    <p className="text-sm text-muted-foreground">Capacidad Total</p>
+                                    <p className="text-2xl font-bold">{stats.totalCapacity.toFixed(1)} m³</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        Promedio: {stats.avgCapacity.toFixed(1)} m³/bodega
+                                    </p>
+                                </div>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardContent className="flex items-center gap-4 p-4">
+                                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-warning/10">
+                                    <Package className="h-6 w-6 text-warning" />
+                                </div>
+                                <div>
+                                    <p className="text-sm text-muted-foreground">Total Productos</p>
+                                    <p className="text-2xl font-bold">{stats.totalProducts}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        En todas las bodegas
+                                    </p>
+                                </div>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardContent className="flex items-center gap-4 p-4">
+                                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-500/10">
+                                    <Thermometer className="h-6 w-6 text-purple-600" />
+                                </div>
+                                <div>
+                                    <p className="text-sm text-muted-foreground">Bodegas Frías</p>
+                                    <p className="text-2xl font-bold">
+                                        {warehouses.filter(w => w.temperatureControlled).length}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                        Control de temperatura
+                                    </p>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+                )}
 
                 {/* Tabs */}
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
@@ -503,130 +513,133 @@ export default function WarehousesPage() {
                                             <TableHead>Código</TableHead>
                                             <TableHead>Nombre</TableHead>
                                             <TableHead>Ubicación</TableHead>
-                                            <TableHead>Capacidad</TableHead>
+                                            <TableHead>Capacidad (m³)</TableHead>
                                             <TableHead>Encargado</TableHead>
                                             <TableHead>Productos</TableHead>
+                                            <TableHead>Temp.</TableHead>
                                             <TableHead>Estado</TableHead>
+                                            <TableHead>Creado</TableHead>
                                             <TableHead className="text-right">Acciones</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {filteredWarehouses.map((warehouse) => {
-                                            const usagePercentage = getUsagePercentage(warehouse)
-                                            return (
-                                                <TableRow key={warehouse.id} className="hover:bg-muted/50">
-                                                    <TableCell className="font-medium">
-                                                        <Badge variant="outline" className="font-mono">
-                                                            {warehouse.code}
+                                        {filteredWarehouses.length === 0 && (
+                                            <TableRow>
+                                                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                                                    No se encontraron bodegas
+                                                </TableCell>
+                                            </TableRow>
+                                        )}
+                                        {filteredWarehouses.map((warehouse) => (
+                                            <TableRow key={warehouse.id} className="hover:bg-muted/50">
+                                                <TableCell className="font-medium">
+                                                    <Badge variant="outline" className="font-mono">
+                                                        {warehouse.code}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex items-center gap-2">
+                                                        {warehouse.temperatureControlled ? (
+                                                            <ThermometerSnowflake className="h-4 w-4 text-blue-500" />
+                                                        ) : (
+                                                            <Warehouse className="h-4 w-4 text-muted-foreground" />
+                                                        )}
+                                                        <span className="font-medium">{warehouse.name}</span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex items-center gap-2">
+                                                        <MapPin className="h-3 w-3 text-muted-foreground" />
+                                                        <span className="text-sm">{warehouse.location}</span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <span className="font-medium">{warehouse.capacityM3} m³</span>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex items-center gap-2">
+                                                        <User className="h-3 w-3 text-muted-foreground" />
+                                                        <span className="text-sm">{warehouse.managerName}</span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex items-center gap-2">
+                                                        <Package className="h-3 w-3 text-muted-foreground" />
+                                                        <span className="text-sm">{warehouse.productCount} productos</span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    {warehouse.temperatureControlled ? (
+                                                        <Badge variant="outline" className="gap-1 text-xs bg-blue-500/10 text-blue-600">
+                                                            <ThermometerSnowflake className="h-3 w-3" />
+                                                            Controlada
                                                         </Badge>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <div className="flex items-center gap-2">
-                                                            {warehouse.temperatureControlled ? (
-                                                                <ThermometerSnowflake className="h-4 w-4 text-blue-500" />
-                                                            ) : (
-                                                                <Warehouse className="h-4 w-4 text-muted-foreground" />
-                                                            )}
-                                                            <span>{warehouse.name}</span>
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <div className="flex items-center gap-2">
-                                                            <MapPin className="h-3 w-3 text-muted-foreground" />
-                                                            <span className="text-sm">{warehouse.location}</span>
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <div className="space-y-1">
-                                                            <div className="flex justify-between text-xs">
-                                                                <span>{((warehouse as any).currentUsageM3 || 0).toFixed(1)}/{warehouse.capacityM3} m³</span>
-                                                                <span>{usagePercentage.toFixed(0)}%</span>
-                                                            </div>
-                                                            <Progress value={usagePercentage} className="h-2" />
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <div className="flex items-center gap-2">
-                                                            <User className="h-3 w-3 text-muted-foreground" />
-                                                            <span className="text-sm">{warehouse.managerName}</span>
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <div className="flex flex-col gap-1">
-                                                            <div className="flex items-center gap-2">
-                                                                <Package className="h-3 w-3 text-muted-foreground" />
-                                                                <span className="text-sm">{warehouse.productCount} productos</span>
-                                                            </div>
-                                                            {((warehouse as any).lowStockProducts || 0) > 0 && (
-                                                                <Badge variant="outline" className="w-fit gap-1 text-xs bg-warning/10 text-warning">
-                                                                    <AlertTriangle className="h-3 w-3" />
-                                                                    {((warehouse as any).lowStockProducts || 0)} bajo stock
-                                                                </Badge>
-                                                            )}
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <div className="flex items-center gap-2">
-                                                            <Badge variant={warehouse.isActive ? "default" : "secondary"}>
-                                                                {warehouse.isActive ? "Activa" : "Inactiva"}
-                                                            </Badge>
-                                                            {warehouse.temperatureControlled && (
-                                                                <Badge variant="outline" className="text-xs">
-                                                                    {(warehouse as any).temperatureRange || "N/A"}
-                                                                </Badge>
-                                                            )}
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell className="text-right">
-                                                        <div className="flex justify-end gap-1">
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                onClick={() => handleViewStock(warehouse)}
-                                                                title="Ver stock"
-                                                            >
-                                                                <Eye className="h-4 w-4" />
-                                                            </Button>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                onClick={() => handleEditWarehouse(warehouse)}
-                                                                title="Editar"
-                                                            >
-                                                                <Edit className="h-4 w-4" />
-                                                            </Button>
-                                                            <DropdownMenu>
-                                                                <DropdownMenuTrigger asChild>
-                                                                    <Button variant="ghost" size="icon">
-                                                                        <Filter className="h-4 w-4" />
-                                                                    </Button>
-                                                                </DropdownMenuTrigger>
-                                                                <DropdownMenuContent align="end">
-                                                                    <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                                                                    <DropdownMenuItem onClick={() => handleViewStock(warehouse)}>
-                                                                        <Eye className="mr-2 h-4 w-4" />
-                                                                        Ver Stock
-                                                                    </DropdownMenuItem>
-                                                                    <DropdownMenuItem onClick={() => handleEditWarehouse(warehouse)}>
-                                                                        <Edit className="mr-2 h-4 w-4" />
-                                                                        Editar
-                                                                    </DropdownMenuItem>
-                                                                    <DropdownMenuItem>
-                                                                        <BarChart3 className="mr-2 h-4 w-4" />
-                                                                        Reportes
-                                                                    </DropdownMenuItem>
-                                                                    <DropdownMenuSeparator />
-                                                                    <DropdownMenuItem className="text-destructive">
-                                                                        <Trash2 className="mr-2 h-4 w-4" />
-                                                                        Desactivar
-                                                                    </DropdownMenuItem>
-                                                                </DropdownMenuContent>
-                                                            </DropdownMenu>
-                                                        </div>
-                                                    </TableCell>
-                                                </TableRow>
-                                            )
-                                        })}
+                                                    ) : (
+                                                        <Badge variant="outline" className="gap-1 text-xs">
+                                                            <ThermometerSun className="h-3 w-3" />
+                                                            Ambiente
+                                                        </Badge>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge variant={warehouse.isActive ? "default" : "secondary"}>
+                                                        {warehouse.isActive ? "Activa" : "Inactiva"}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <span className="text-sm text-muted-foreground">
+                                                        {formatDate(warehouse.createdAt)}
+                                                    </span>
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <div className="flex justify-end gap-1">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={() => handleViewStock(warehouse)}
+                                                            title="Ver stock"
+                                                        >
+                                                            <Eye className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={() => handleEditWarehouse(warehouse)}
+                                                            title="Editar"
+                                                        >
+                                                            <Edit className="h-4 w-4" />
+                                                        </Button>
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button variant="ghost" size="icon">
+                                                                    <Filter className="h-4 w-4" />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end">
+                                                                <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                                                                <DropdownMenuItem onClick={() => handleViewStock(warehouse)}>
+                                                                    <Eye className="mr-2 h-4 w-4" />
+                                                                    Ver Stock
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem onClick={() => handleEditWarehouse(warehouse)}>
+                                                                    <Edit className="mr-2 h-4 w-4" />
+                                                                    Editar
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem>
+                                                                    <BarChart3 className="mr-2 h-4 w-4" />
+                                                                    Reportes
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuSeparator />
+                                                                <DropdownMenuItem className="text-destructive">
+                                                                    <Trash2 className="mr-2 h-4 w-4" />
+                                                                    Desactivar
+                                                                </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
                                     </TableBody>
                                 </Table>
                             </CardContent>

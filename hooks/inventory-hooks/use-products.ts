@@ -5,7 +5,9 @@
  * Custom hook for managing products data with loading and error states 
  */
 import { useState, useEffect, useCallback } from "react";
-import { productService, Product, ProductsQueryParams, ApiError } from "@/lib/api";
+import { productService } from "@/lib/api/services/inventory-services/productService";
+import { Product, ProductsQueryParams } from "@/lib/api/types/inventory-types/inventory.types";
+import { ApiError } from "@/lib/api/config";
 
 interface UseProductState {
     products: Product[];
