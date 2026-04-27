@@ -1,16 +1,21 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { useAuth } from "@/hooks/auth-hooks/use-auth"
+import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useAuth } from "@/hooks/auth-hooks/use-auth";
 import {
   LayoutDashboard,
   Users,
@@ -40,14 +45,14 @@ import {
   CalendarClock,
   Bell,
   Megaphone,
-  BookUser
-} from "lucide-react"
+  BookUser,
+} from "lucide-react";
 
 interface NavItem {
-  title: string
-  href: string
-  icon: React.ElementType
-  children?: { title: string; href: string; icon: React.ElementType }[]
+  title: string;
+  href: string;
+  icon: React.ElementType;
+  children?: { title: string; href: string; icon: React.ElementType }[];
 }
 
 const navigation: NavItem[] = [
@@ -69,8 +74,21 @@ const navigation: NavItem[] = [
       { title: "Productos", href: "/inventory", icon: Package },
       { title: "Proveedores", href: "/inventory/suppliers", icon: Truck },
       { title: "Bodegas", href: "/inventory/warehouses", icon: Warehouse },
-      { title: "Órdenes de Compra", href: "/inventory/purchase-orders", icon: ClipboardList },
-      { title: "Pagos a Proveedores", href: "/inventory/payments-suppliers", icon: CreditCard },
+      {
+        title: "Órdenes de Compra",
+        href: "/inventory/purchase-orders",
+        icon: ClipboardList,
+      },
+      {
+        title: "Pagos a Proveedores",
+        href: "/inventory/payments-suppliers",
+        icon: CreditCard,
+      },
+      {
+        title: "Aprobacion de PO",
+        href: "/inventory/purchase-orders/status",
+        icon: UserCog,
+      },
     ],
   },
   {
@@ -82,7 +100,11 @@ const navigation: NavItem[] = [
       { title: "Expedientes", href: "/medical/case-files", icon: FolderOpen },
       { title: "Paquetes", href: "/medical/packages", icon: Package },
       { title: "Catálogo de Operaciones", href: "", icon: Scissors },
-      { title: "Programación de Cirugías", href: "/medical/schedule-operations", icon: Calendar },
+      {
+        title: "Programación de Cirugías",
+        href: "/medical/schedule-operations",
+        icon: Calendar,
+      },
     ],
   },
   {
@@ -102,7 +124,11 @@ const navigation: NavItem[] = [
     children: [
       { title: "Punto de Venta", href: "/pharmacy", icon: ShoppingCart },
       { title: "Stock", href: "/pharmacy/stock-pharmacy", icon: Package },
-      { title: "Historial de Ventas", href: "/pharmacy/sales-history", icon: Receipt },
+      {
+        title: "Historial de Ventas",
+        href: "/pharmacy/sales-history",
+        icon: Receipt,
+      },
     ],
   },
   {
@@ -112,7 +138,11 @@ const navigation: NavItem[] = [
     children: [
       { title: "Calendarios", href: "/admin/tools/calendars", icon: Calendar },
       { title: "Agenda", href: "/admin/tools/contacts", icon: BookUser },
-      { title: "Notificaciones", href: "/admin/tools/notifications", icon: Megaphone },
+      {
+        title: "Notificaciones",
+        href: "/admin/tools/notifications",
+        icon: Megaphone,
+      },
     ],
   },
   {
@@ -136,22 +166,26 @@ const navigation: NavItem[] = [
         icon: Plug,
       },
     ],
-  }
-]
+  },
+];
 
 export function Sidebar() {
-  const [collapsed, setCollapsed] = useState(false)
-  const [expandedItems, setExpandedItems] = useState<string[]>([])
-  const pathname = usePathname()
+  const [collapsed, setCollapsed] = useState(false);
+  const [expandedItems, setExpandedItems] = useState<string[]>([]);
+  const pathname = usePathname();
 
   const toggleExpanded = (title: string) => {
-    setExpandedItems((prev) => (prev.includes(title) ? prev.filter((item) => item !== title) : [...prev, title]))
-  }
+    setExpandedItems((prev) =>
+      prev.includes(title)
+        ? prev.filter((item) => item !== title)
+        : [...prev, title],
+    );
+  };
 
   const isActive = (href: string) => {
-    if (href === "/") return pathname === "/"
-    return pathname.startsWith(href)
-  }
+    if (href === "/") return pathname === "/";
+    return pathname.startsWith(href);
+  };
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -169,8 +203,12 @@ export function Sidebar() {
                 <Building2 className="h-5 w-5 text-sidebar-primary-foreground" />
               </div>
               <div className="flex flex-col">
-                <span className="text-sm font-semibold text-sidebar-foreground">MediCare Pro</span>
-                <span className="text-xs text-sidebar-foreground/60">Sistema Hospitalario</span>
+                <span className="text-sm font-semibold text-sidebar-foreground">
+                  MediCare Pro
+                </span>
+                <span className="text-xs text-sidebar-foreground/60">
+                  Sistema Hospitalario
+                </span>
               </div>
             </div>
           )}
@@ -185,10 +223,10 @@ export function Sidebar() {
         <ScrollArea className="h-[calc(100vh-13rem)]">
           <nav className="p-2 space-y-1">
             {navigation.map((item) => {
-              const Icon = item.icon
-              const hasChildren = item.children && item.children.length > 0
-              const isExpanded = expandedItems.includes(item.title)
-              const active = isActive(item.href)
+              const Icon = item.icon;
+              const hasChildren = item.children && item.children.length > 0;
+              const isExpanded = expandedItems.includes(item.title);
+              const active = isActive(item.href);
 
               if (collapsed) {
                 return (
@@ -206,11 +244,14 @@ export function Sidebar() {
                         <Icon className="h-5 w-5" />
                       </Link>
                     </TooltipTrigger>
-                    <TooltipContent side="right" className="bg-popover text-popover-foreground">
+                    <TooltipContent
+                      side="right"
+                      className="bg-popover text-popover-foreground"
+                    >
                       {item.title}
                     </TooltipContent>
                   </Tooltip>
-                )
+                );
               }
 
               return (
@@ -230,13 +271,18 @@ export function Sidebar() {
                           <Icon className="h-5 w-5" />
                           <span>{item.title}</span>
                         </div>
-                        <ChevronRight className={cn("h-4 w-4 transition-transform", isExpanded && "rotate-90")} />
+                        <ChevronRight
+                          className={cn(
+                            "h-4 w-4 transition-transform",
+                            isExpanded && "rotate-90",
+                          )}
+                        />
                       </button>
                       {isExpanded && (
                         <div className="mt-1 ml-4 space-y-1 border-l border-sidebar-border pl-3">
                           {item.children?.map((child) => {
-                            const ChildIcon = child.icon
-                            const childActive = pathname === child.href
+                            const ChildIcon = child.icon;
+                            const childActive = pathname === child.href;
                             return (
                               <Link
                                 key={child.href}
@@ -251,7 +297,7 @@ export function Sidebar() {
                                 <ChildIcon className="h-4 w-4" />
                                 <span>{child.title}</span>
                               </Link>
-                            )
+                            );
                           })}
                         </div>
                       )}
@@ -271,7 +317,7 @@ export function Sidebar() {
                     </Link>
                   )}
                 </div>
-              )
+              );
             })}
           </nav>
         </ScrollArea>
@@ -301,7 +347,7 @@ export function Sidebar() {
         </div>
       </aside>
     </TooltipProvider>
-  )
+  );
 }
 
 /*function UserInfo() {

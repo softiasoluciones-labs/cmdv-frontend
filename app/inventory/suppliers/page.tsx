@@ -126,25 +126,23 @@ export default function SuppliersPage() {
     () =>
       suppliers.filter((supplier) => {
         const q = searchQuery.trim().toLowerCase();
-        return suppliers.filter((supplier) => {
-          const matchesSearch =
-            supplier.name.toLowerCase().includes(q) ||
-            supplier.code.toLowerCase().includes(q) ||
-            supplier.contactName?.toLowerCase().includes(q) ||
-            supplier.email?.toLowerCase().includes(q) ||
-            supplier.phone?.includes(q) ||
-            supplier.taxId?.toLowerCase().includes(q);
+        const matchesSearch =
+          supplier.name.toLowerCase().includes(q) ||
+          supplier.code.toLowerCase().includes(q) ||
+          supplier.contactName?.toLowerCase().includes(q) ||
+          supplier.email?.toLowerCase().includes(q) ||
+          supplier.phone?.includes(q) ||
+          supplier.taxId?.toLowerCase().includes(q);
 
-          const matchesStatus =
-            statusFilter === "all" ||
-            (statusFilter === "active" && supplier.isActive) ||
-            (statusFilter === "inactive" && !supplier.isActive);
+        const matchesStatus =
+          statusFilter === "all" ||
+          (statusFilter === "active" && supplier.isActive) ||
+          (statusFilter === "inactive" && !supplier.isActive);
 
-          const matchesPayment =
-            paymentFilter === "all" || supplier.paymentTerms === paymentFilter;
+        const matchesPayment =
+          paymentFilter === "all" || supplier.paymentTerms === paymentFilter;
 
-          return matchesSearch && matchesStatus && matchesPayment;
-        });
+        return matchesSearch && matchesStatus && matchesPayment;
       }),
     [suppliers, searchQuery, statusFilter, paymentFilter],
   );

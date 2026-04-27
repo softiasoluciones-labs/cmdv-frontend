@@ -107,3 +107,91 @@ export interface SupplierQueryParams {
 
 /*****************************************************************/
 
+
+
+/*****************************************************************/
+/**
+ * Purchase order interfaces
+ */
+
+export interface PurchaseOrder {
+    id: string;
+    orderNumber: string;
+    supplierId: string;
+    warehouseId: string;
+    warehouseName: string;
+    orderDate: string; // ISO date
+    expectedDate: string; // ISO date
+    status: "draft" | "pending" | "approved" | "received" | "cancelled";
+    totalAmount: number;
+    notes: string;
+    createdBy: string;
+    items: PurchaseOrderItem[];
+}
+
+export interface PurchaseOrderChangeStatus { 
+    status: string; 
+}
+
+export interface PurchaseOrderReceivedItems { 
+    receivedItems: receivedItems[];
+    notes?: string;
+}
+
+export interface receivedItems { 
+    productId: string;
+    quantity: number;
+    batchNumber?: string;
+    expirationDate?: string;
+}
+
+export interface PurchaseOrderItem {
+    id: string; 
+    productId: string;
+    productCode: string;
+    productName: string;
+    quantity: number;
+    unitCost: number;
+    totalCost: number;
+    receivedQuantity: number;
+    expirationDate: string; // ISO date
+    batchNumber: string;
+    notes: string;
+}
+
+export interface CreatePurchaseOrderItemPayload {
+    productId: string;
+    quantity: number;
+    unitCost: number;
+    expirationDate?: string;
+    batchNumber?: string;
+    notes?: string;
+}
+
+export interface CreatePurchaseOrderPayload {
+    supplierId: string;
+    warehouseId: string;
+    expectedDate?: string;
+    paymentTerms: "immediate" | "one_payment" | "two_payments" | "three_payments";
+    discount?: number;
+    shippingCost?: number;
+    notes?: string;
+    items: CreatePurchaseOrderItemPayload[];
+}
+
+export interface PurchaseOrdersQueryParams {
+    supplierId?: string;
+    status?: "draft" | "pending" | "approved" | "received" | "cancelled" | "closed";
+    page?: number; 
+    limit?: number;
+    search?: string;
+}
+
+export interface PaginatedPurchaseOrdersResponse {
+    orders?: PurchaseOrder[];
+    total: number;
+    page: number;
+    limit: number;
+}
+
+/*****************************************************************/
