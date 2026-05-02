@@ -1,11 +1,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { formatDate, type Patient } from "@/lib/mock-data"
-import { User, Phone, Mail, MapPin, Heart, AlertTriangle, Pill, Shield } from "lucide-react"
+import { type Patients } from "@/lib/api/types/medical-types/patient.types"
+import { formatDate } from "@/lib/utils"
+import { User, Phone, MapPin, Heart, Shield, FileText } from "lucide-react"
 
 interface PatientDetailProps {
-  patient: Patient
+  patient: Patients
 }
 
 export function PatientDetail({ patient }: PatientDetailProps) {
@@ -20,15 +21,15 @@ export function PatientDetail({ patient }: PatientDetailProps) {
             </div>
             <div>
               <CardTitle className="text-xl">
-                {patient.firstName} {patient.lastName}
+                {patient.fullName || `${patient.firstName} ${patient.lastName}`}
               </CardTitle>
               <p className="text-muted-foreground">{patient.fileNumber}</p>
             </div>
             <div className="ml-auto">
-              {patient.hasActiveCase ? (
-                <Badge className="bg-success text-success-foreground">Caso Activo</Badge>
+              {patient.isActive ? (
+                <Badge className="bg-success text-success-foreground">Activo</Badge>
               ) : (
-                <Badge variant="secondary">Sin Caso Activo</Badge>
+                <Badge variant="secondary">Inactivo</Badge>
               )}
             </div>
           </div>
@@ -37,7 +38,7 @@ export function PatientDetail({ patient }: PatientDetailProps) {
           <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
             <div>
               <p className="text-sm text-muted-foreground">DPI</p>
-              <p className="font-medium">{patient.dpi}</p>
+              <p className="font-medium">{patient.identificationNumber || "—"}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Edad</p>
@@ -45,12 +46,14 @@ export function PatientDetail({ patient }: PatientDetailProps) {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Sexo</p>
-              <p className="font-medium">{patient.gender === "M" ? "Masculino" : "Femenino"}</p>
+              <p className="font-medium">
+                {(patient.gender === "male" || patient.gender === "M") ? "Masculino" : "Femenino"}
+              </p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Tipo de Sangre</p>
               <Badge variant="outline" className="font-mono text-lg">
-                {patient.bloodType}
+                {patient.bloodType || "—"}
               </Badge>
             </div>
           </div>
@@ -69,26 +72,41 @@ export function PatientDetail({ patient }: PatientDetailProps) {
           <CardContent className="space-y-3">
             <div className="flex items-center gap-3">
               <Phone className="h-4 w-4 text-muted-foreground" />
-              <span>{patient.phone}</span>
+              <span>{patient.phone || "—"}</span>
             </div>
-            <div className="flex items-center gap-3">
-              <Mail className="h-4 w-4 text-muted-foreground" />
-              <span>{patient.email}</span>
-            </div>
+            {patient.mobile && (
+              <div className="flex items-center gap-3">
+                <Phone className="h-4 w-4 text-muted-foreground" />
+                <span>{patient.mobile} <span className="text-xs text-muted-foreground">(móvil)</span></span>
+              </div>
+            )}
             <div className="flex items-start gap-3">
               <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-              <span>{patient.address}</span>
+              <span>
+                {[patient.address, patient.city, patient.state].filter(Boolean).join(", ") || "—"}
+              </span>
             </div>
-            <Separator />
-            <div>
-              <p className="text-sm text-muted-foreground mb-1">Contacto de Emergencia</p>
-              <p className="font-medium">{patient.emergencyContact}</p>
-              <p className="text-sm">{patient.emergencyPhone}</p>
-            </div>
+            {patient.emergencyContactName && (
+              <>
+                <Separator />
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Contacto de Emergencia</p>
+                  <p className="font-medium">
+                    {patient.emergencyContactName}
+                    {patient.emergencyContactRelationship && (
+                      <span className="text-sm font-normal text-muted-foreground ml-1">
+                        ({patient.emergencyContactRelationship})
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-sm">{patient.emergencyContactPhone || "—"}</p>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
 
-        {/* Medical Info */}
+        {/* Medical Notes */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
@@ -96,64 +114,48 @@ export function PatientDetail({ patient }: PatientDetailProps) {
               Información Médica
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-3">
             <div>
-              <div className="flex items-center gap-2 mb-2">
-                <AlertTriangle className="h-4 w-4 text-destructive" />
-                <span className="text-sm font-medium">Alergias</span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {patient.allergies.length > 0 ? (
-                  patient.allergies.map((allergy, index) => (
-                    <Badge key={index} variant="destructive">
-                      {allergy}
-                    </Badge>
-                  ))
-                ) : (
-                  <span className="text-sm text-muted-foreground">Sin alergias registradas</span>
-                )}
-              </div>
+              <p className="text-sm text-muted-foreground mb-1">Fecha de Nacimiento</p>
+              <p className="font-medium">{formatDate(patient.dateOfBirth)}</p>
             </div>
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <Heart className="h-4 w-4 text-warning" />
-                <span className="text-sm font-medium">Condiciones Crónicas</span>
+            {patient.allergies && (Array.isArray(patient.allergies) ? patient.allergies.length > 0 : true) && (
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Alergias</p>
+                <p className="text-sm">{Array.isArray(patient.allergies) ? patient.allergies.join(", ") : patient.allergies}</p>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {patient.chronicConditions.length > 0 ? (
-                  patient.chronicConditions.map((condition, index) => (
-                    <Badge key={index} variant="secondary">
-                      {condition}
-                    </Badge>
-                  ))
-                ) : (
-                  <span className="text-sm text-muted-foreground">Sin condiciones crónicas</span>
-                )}
+            )}
+            {patient.chronicConditions && (Array.isArray(patient.chronicConditions) ? patient.chronicConditions.length > 0 : true) && (
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Condiciones Crónicas</p>
+                <p className="text-sm">{Array.isArray(patient.chronicConditions) ? patient.chronicConditions.join(", ") : patient.chronicConditions}</p>
               </div>
-            </div>
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <Pill className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium">Medicamentos Actuales</span>
+            )}
+            {patient.currentMedications && (Array.isArray(patient.currentMedications) ? patient.currentMedications.length > 0 : true) && (
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Medicamentos Actuales</p>
+                <p className="text-sm">{Array.isArray(patient.currentMedications) ? patient.currentMedications.join(", ") : patient.currentMedications}</p>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {patient.currentMedications.length > 0 ? (
-                  patient.currentMedications.map((med, index) => (
-                    <Badge key={index} variant="outline">
-                      {med}
-                    </Badge>
-                  ))
-                ) : (
-                  <span className="text-sm text-muted-foreground">Sin medicamentos</span>
-                )}
+            )}
+            {patient.notes ? (
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Notas</span>
+                </div>
+                <p className="text-sm whitespace-pre-wrap">{patient.notes}</p>
               </div>
-            </div>
+            ) : (
+              !patient.allergies && !patient.chronicConditions && !patient.currentMedications && (
+                <p className="text-sm text-muted-foreground">Sin notas médicas registradas</p>
+              )
+            )}
           </CardContent>
         </Card>
       </div>
 
       {/* Insurance Info */}
-      {patient.insuranceProvider && (
+      {patient.insuranceCompany && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
@@ -165,28 +167,16 @@ export function PatientDetail({ patient }: PatientDetailProps) {
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <p className="text-sm text-muted-foreground">Proveedor</p>
-                <p className="font-medium">{patient.insuranceProvider}</p>
+                <p className="font-medium">{patient.insuranceCompany}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Número de Póliza</p>
-                <p className="font-medium">{patient.insuranceNumber}</p>
+                <p className="font-medium">{patient.insurancePolicyNumber || "—"}</p>
               </div>
             </div>
           </CardContent>
         </Card>
       )}
-
-      {/* Visit History */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Historial de Visitas</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Última visita: <span className="font-medium text-foreground">{formatDate(patient.lastVisit)}</span>
-          </p>
-        </CardContent>
-      </Card>
     </div>
   )
 }
