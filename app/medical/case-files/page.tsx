@@ -7,401 +7,282 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  Search,
-  Plus,
-  Edit,
-  Eye,
-  Filter,
-  Download,
-  Printer,
-  CheckCircle,
-  XCircle,
-  Clock,
-  FileText,
-  User,
-  Users,
-  BedDouble,
-  DollarSign,
-  AlertTriangle,
-  Stethoscope,
-  ClipboardCheck,
-  RefreshCw,
-  ArrowRightLeft,
-  Lock,
-  Unlock,
-  Calendar,
-  Building,
-  Activity,
-  TrendingUp,
-  MoreVertical,
-  Copy,
-  FilePlus,
-  Shield,
-  Heart,
-  Pill
-} from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
-import { Switch } from "@/components/ui/switch"
 import { Progress } from "@/components/ui/progress"
+import { Skeleton } from "@/components/ui/skeleton"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import {
+  Search, Plus, Edit, Eye, Download, Printer, CheckCircle, XCircle, Clock,
+  FileText, User, BedDouble, DollarSign, AlertTriangle, Stethoscope,
+  ClipboardCheck, RefreshCw, ArrowRightLeft, Calendar, Building, Activity,
+  TrendingUp, MoreVertical, FilePlus, Shield, Heart, Loader2, Package,
+} from "lucide-react"
+import { useCaseFile } from "@/hooks/medical-hooks/use-casefile"
+import { usePatients } from "@/hooks/medical-hooks/use-patients"
+import {
+  CaseFileListResponse,
+  CaseValidationResponse,
+  ClosabilityResponse,
+  TransferabilityResponse,
+  CreateCaseFileRequest,
+  UpdateCaseFileRequest,
+  ShiftType,
+  CaseStatus,
+  CaseStatusFlow,
+  CaseFileQueryParams,
+  ValidationStatus,
+} from "@/lib/api/types/medical-types/caseFile.type"
 
-// Datos de ejemplo para expedientes
-const mockCaseFiles = [
-  {
-    id: "47885af2-8b92-4981-a5a3-227e1b32dcff",
-    case_number: "E-20251207-0001",
-    patient_name: "Ana Sofía Ramírez Soto",
-    admission_type_name: "Emergencia",
-    admission_date: "2025-12-08T00:14:18.409Z",
-    case_status: "active",
-    current_status_flow: "C1_CREACION",
-    shift_type: "daytime",
-    total_cost: 0,
-    paid_amount: 0,
-    balance: 0,
-    primary_doctor: "Dr. Roberto Martínez",
-    assigned_room: "-",
-    patient_age: 34,
-    patient_gender: "Femenino",
-    diagnosis: "Apéndice agudo",
-    priority: "high"
-  },
-  {
-    id: "57885af2-8b92-4981-a5a3-227e1b32dcfg",
-    case_number: "C-20251206-0045",
-    patient_name: "Carlos Enrique García López",
-    admission_type_name: "Consulta Externa",
-    admission_date: "2025-12-06T10:30:00.000Z",
-    case_status: "active",
-    current_status_flow: "C2_EVALUACION",
-    shift_type: "daytime",
-    total_cost: 1250.75,
-    paid_amount: 500.00,
-    balance: 750.75,
-    primary_doctor: "Dra. María José Rodríguez",
-    assigned_room: "HAB-201",
-    patient_age: 45,
-    patient_gender: "Masculino",
-    diagnosis: "Hipertensión arterial",
-    priority: "medium"
-  },
-  {
-    id: "67885af2-8b92-4981-a5a3-227e1b32dcfh",
-    case_number: "H-20251205-0032",
-    patient_name: "Luisa Fernanda Torres Méndez",
-    admission_type_name: "Hospitalización",
-    admission_date: "2025-12-05T14:45:00.000Z",
-    case_status: "active",
-    current_status_flow: "C3_HOSPITALIZACION",
-    shift_type: "night",
-    total_cost: 5675.30,
-    paid_amount: 3000.00,
-    balance: 2675.30,
-    primary_doctor: "Dr. Alejandro Sánchez",
-    assigned_room: "HAB-305",
-    patient_age: 28,
-    patient_gender: "Femenino",
-    diagnosis: "Embarazo de riesgo",
-    priority: "high"
-  },
-  {
-    id: "77885af2-8b92-4981-a5a3-227e1b32dcfi",
-    case_number: "Q-20251204-0021",
-    patient_name: "Jorge Alberto Díaz Ruiz",
-    admission_type_name: "Cirugía Programada",
-    admission_date: "2025-12-04T08:15:00.000Z",
-    case_status: "active",
-    current_status_flow: "C4_QUIROFANO",
-    shift_type: "daytime",
-    total_cost: 15250.00,
-    paid_amount: 10000.00,
-    balance: 5250.00,
-    primary_doctor: "Dr. Mario Fuentes",
-    assigned_room: "HAB-412",
-    patient_age: 52,
-    patient_gender: "Masculino",
-    diagnosis: "Colecistectomía laparoscópica",
-    priority: "medium"
-  },
-  {
-    id: "87885af2-8b92-4981-a5a3-227e1b32dcfj",
-    case_number: "R-20251203-0015",
-    patient_name: "Patricia Elizabeth Castro Vásquez",
-    admission_type_name: "Recuperación",
-    admission_date: "2025-12-03T16:20:00.000Z",
-    case_status: "active",
-    current_status_flow: "C5_RECUPERACION",
-    shift_type: "daytime",
-    total_cost: 8750.40,
-    paid_amount: 8750.40,
-    balance: 0.00,
-    primary_doctor: "Dra. Ana Lucía Jiménez",
-    assigned_room: "HAB-208",
-    patient_age: 38,
-    patient_gender: "Femenino",
-    diagnosis: "Post-operatorio histerectomía",
-    priority: "low"
-  },
-  {
-    id: "97885af2-8b92-4981-a5a3-227e1b32dcfk",
-    case_number: "A-20251201-0089",
-    patient_name: "Miguel Ángel Hernández Ortiz",
-    admission_type_name: "Alta Médica",
-    admission_date: "2025-12-01T11:10:00.000Z",
-    case_status: "closed",
-    current_status_flow: "C6_ALTA",
-    shift_type: "daytime",
-    total_cost: 3250.60,
-    paid_amount: 3250.60,
-    balance: 0.00,
-    primary_doctor: "Dr. Carlos Enrique García",
-    assigned_room: "-",
-    patient_age: 41,
-    patient_gender: "Masculino",
-    diagnosis: "Fractura de radio",
-    priority: "low"
-  }
-]
+// ─── Status / type configs ───────────────────────────────────────────────────
 
-// Datos de ejemplo para validación de expediente
-const mockValidation = {
-  case_id: "47885af2-8b92-4981-a5a3-227e1b32dcff",
-  case_number: "E-20251207-0001",
-  admission_type_code: "H",
-  admission_type_name: "Emergencia",
-  requires_hospitalization: false,
-  has_room_assigned: false,
-  requires_package: false,
-  has_package_assigned: false,
-  allows_transfer: true,
-  is_transfer: false,
-  requires_immediate_payment: false,
-  has_payment: false,
-  validation_status: "COMPLIANT",
-  validation_messages: []
+const statusFlowConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
+  [CaseStatusFlow.C1_CREACION]:             { label: "Creación",        color: "bg-gray-100 text-gray-800",    icon: FileText },
+  [CaseStatusFlow.C2_CANCELACION]:          { label: "Cancelado",       color: "bg-red-100 text-red-800",      icon: XCircle },
+  [CaseStatusFlow.C3_CERRADO]:              { label: "Cerrado",         color: "bg-teal-100 text-teal-800",    icon: CheckCircle },
+  [CaseStatusFlow.CE_CARGOS_EXPEDIENTE]:    { label: "Cargos",          color: "bg-blue-100 text-blue-800",    icon: DollarSign },
+  [CaseStatusFlow.CC_CONFIRMACION_CARGOS]:  { label: "Confirmación",    color: "bg-purple-100 text-purple-800",icon: ClipboardCheck },
+  [CaseStatusFlow.TR_TRASLADO_PROCEDIMIENTO]:{ label: "Traslado",       color: "bg-orange-100 text-orange-800",icon: ArrowRightLeft },
+  [CaseStatusFlow.RA_REAPERTURA]:           { label: "Reapertura",      color: "bg-yellow-100 text-yellow-800",icon: RefreshCw },
+  [CaseStatusFlow.EX_EXTORNO]:              { label: "Extorno",         color: "bg-pink-100 text-pink-800",    icon: Activity },
 }
 
-// Datos de ejemplo para cerrar expediente
-const mockClosability = {
-  allowed: true
+const caseStatusConfig: Record<string, { label: string; color: string }> = {
+  [CaseStatus.ACTIVE]:            { label: "Activo",          color: "bg-green-100 text-green-800" },
+  [CaseStatus.IN_TREATMENT]:      { label: "En Tratamiento",  color: "bg-blue-100 text-blue-800" },
+  [CaseStatus.HOSPITALIZED]:      { label: "Hospitalizado",   color: "bg-purple-100 text-purple-800" },
+  [CaseStatus.SURGERY_SCHEDULED]: { label: "Cirugía Prog.",   color: "bg-orange-100 text-orange-800" },
+  [CaseStatus.RECOVERING]:        { label: "Recuperación",    color: "bg-teal-100 text-teal-800" },
+  [CaseStatus.DISCHARGED]:        { label: "Alta",            color: "bg-gray-100 text-gray-800" },
+  [CaseStatus.TRANSFERRED]:       { label: "Transferido",     color: "bg-yellow-100 text-yellow-800" },
+  [CaseStatus.DECEASED]:          { label: "Fallecido",       color: "bg-red-900/10 text-red-800" },
 }
 
-// Datos de ejemplo para historial
-const mockStatusHistory = [
-  {
-    id: "1",
-    from_status: "CREACION",
-    to_status: "EVALUACION",
-    transition_date: "2025-12-08T00:30:00.000Z",
-    reason: "Evaluación inicial completada",
-    performed_by: "Dra. María Rodríguez"
-  },
-  {
-    id: "2",
-    from_status: "EVALUACION",
-    to_status: "TRATAMIENTO",
-    transition_date: "2025-12-08T01:15:00.000Z",
-    reason: "Diagnóstico confirmado",
-    performed_by: "Dr. Roberto Martínez"
-  }
-]
+const ACTIVE_STATUSES = new Set<CaseStatus>([
+  CaseStatus.ACTIVE, CaseStatus.IN_TREATMENT, CaseStatus.HOSPITALIZED,
+  CaseStatus.SURGERY_SCHEDULED, CaseStatus.RECOVERING,
+])
 
-// Datos de ejemplo para doctores asignados
-const mockCaseDoctors = [
-  {
-    id: "1",
-    doctor_id: "doc-001",
-    doctor_name: "Dr. Roberto Martínez",
-    role: "Médico Principal",
-    assigned_at: "2025-12-08T00:20:00.000Z",
-    notes: "Especialista en emergencias"
-  },
-  {
-    id: "2",
-    doctor_id: "doc-002",
-    doctor_name: "Dra. Ana Lucía Jiménez",
-    role: "Anestesiólogo",
-    assigned_at: "2025-12-08T00:45:00.000Z",
-    notes: "Disponible para cirugía"
-  }
-]
-
-// Datos de ejemplo para servicios
-const mockCaseServices = [
-  {
-    id: "1",
-    service_name: "Consulta de Emergencia",
-    quantity: 1,
-    unit_price: "250.00",
-    total_price: "250.00",
-    applied_at: "2025-12-08T00:30:00.000Z"
-  },
-  {
-    id: "2",
-    service_name: "Laboratorio Básico",
-    quantity: 1,
-    unit_price: "150.00",
-    total_price: "150.00",
-    applied_at: "2025-12-08T01:00:00.000Z"
-  }
-]
-
-// Configuración de estados
-const statusFlowConfig = {
-  C1_CREACION: { label: "Creación", color: "bg-gray-100 text-gray-800", icon: FileText },
-  C2_EVALUACION: { label: "Evaluación", color: "bg-blue-100 text-blue-800", icon: Stethoscope },
-  C3_HOSPITALIZACION: { label: "Hospitalización", color: "bg-purple-100 text-purple-800", icon: BedDouble },
-  C4_QUIROFANO: { label: "Quirófano", color: "bg-red-100 text-red-800", icon: Activity },
-  C5_RECUPERACION: { label: "Recuperación", color: "bg-green-100 text-green-800", icon: Heart },
-  C6_ALTA: { label: "Alta", color: "bg-teal-100 text-teal-800", icon: CheckCircle }
+const EMPTY_CREATE_FORM: CreateCaseFileRequest = {
+  patient_id: "",
+  admission_type_id: "",
+  chief_complaint: "",
+  initial_diagnosis: "",
+  shift_type: ShiftType.DAYTIME,
+  notes: "",
 }
 
-const admissionTypeConfig = {
-  Emergencia: { label: "Emergencia", color: "bg-destructive/10 text-destructive", icon: AlertTriangle },
-  "Consulta Externa": { label: "Consulta", color: "bg-primary/10 text-primary", icon: User },
-  Hospitalización: { label: "Hospitalización", color: "bg-purple-500/10 text-purple-600", icon: Building },
-  "Cirugía Programada": { label: "Cirugía", color: "bg-warning/10 text-warning", icon: Activity },
-  Recuperación: { label: "Recuperación", color: "bg-success/10 text-success", icon: Heart },
-  "Alta Médica": { label: "Alta", color: "bg-teal-500/10 text-teal-600", icon: CheckCircle }
-}
+// ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function CaseFilesPage() {
+  const {
+    caseFiles, selectedCaseFile, pagination, isLoading, error,
+    fetchCaseFiles, fetchCaseFileById,
+    createCaseFile, updateCaseFile, updateCaseStatus,
+    validateCaseFile, canTransferCase, canCloseCase,
+    clearError,
+  } = useCaseFile()
+
+  const { patients } = usePatients({ limit: 200 })
+
+  // ── UI state ───────────────────────────────────────────────────────────────
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [admissionTypeFilter, setAdmissionTypeFilter] = useState("all")
-  const [selectedCase, setSelectedCase] = useState<any>(null)
-  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
-  const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false)
-  const [isCloseDialogOpen, setIsCloseDialogOpen] = useState(false)
   const [activeTab, setActiveTab] = useState("list")
 
-  const [transferForm, setTransferForm] = useState({
-    to_department: "",
-    transfer_reason: "",
-    notes: ""
-  })
+  const [selectedCase, setSelectedCase] = useState<CaseFileListResponse | null>(null)
 
-  // Filtrar expedientes
+  const [isDetailOpen, setIsDetailOpen] = useState(false)
+  const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [isEditOpen, setIsEditOpen] = useState(false)
+  const [isTransferOpen, setIsTransferOpen] = useState(false)
+  const [isCloseOpen, setIsCloseOpen] = useState(false)
+
+  const [validation, setValidation] = useState<CaseValidationResponse | null>(null)
+  const [closability, setClosability] = useState<ClosabilityResponse | null>(null)
+  const [transferability, setTransferability] = useState<TransferabilityResponse | null>(null)
+  const [isDialogLoading, setIsDialogLoading] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // ── Forms ──────────────────────────────────────────────────────────────────
+  const [createForm, setCreateForm] = useState<CreateCaseFileRequest>(EMPTY_CREATE_FORM)
+  const [editForm, setEditForm] = useState<UpdateCaseFileRequest>({})
+  const [transferNotes, setTransferNotes] = useState("")
+  const [closeNotes, setCloseNotes] = useState("")
+  const [finalDiagnosis, setFinalDiagnosis] = useState("")
+
+  // ── Server-side status filter ──────────────────────────────────────────────
+  const handleStatusFilterChange = (value: string) => {
+    setStatusFilter(value)
+    const params: CaseFileQueryParams = {}
+    if (value !== "all") params.case_status = value as CaseStatus
+    fetchCaseFiles(params)
+  }
+
+  // ── Client-side filtering (search + admission type) ────────────────────────
   const filteredCaseFiles = useMemo(() => {
-    return mockCaseFiles.filter(caseFile => {
+    const q = search.toLowerCase().trim()
+    return caseFiles.filter(c => {
       const matchesSearch =
-        caseFile.case_number.toLowerCase().includes(search.toLowerCase()) ||
-        caseFile.patient_name.toLowerCase().includes(search.toLowerCase()) ||
-        caseFile.primary_doctor.toLowerCase().includes(search.toLowerCase())
-
-      const matchesStatus =
-        statusFilter === "all" ||
-        (statusFilter === "active" && caseFile.case_status === "active") ||
-        (statusFilter === "closed" && caseFile.case_status === "closed")
-
-      const matchesAdmissionType =
+        !q ||
+        c.case_number.toLowerCase().includes(q) ||
+        c.patient_name.toLowerCase().includes(q)
+      const matchesType =
         admissionTypeFilter === "all" ||
-        caseFile.admission_type_name === admissionTypeFilter
-
-      return matchesSearch && matchesStatus && matchesAdmissionType
+        c.admission_type_name === admissionTypeFilter
+      return matchesSearch && matchesType
     })
-  }, [search, statusFilter, admissionTypeFilter])
+  }, [caseFiles, search, admissionTypeFilter])
 
-  // Estadísticas
+  // ── Stats ──────────────────────────────────────────────────────────────────
   const stats = useMemo(() => {
-    const activeCases = mockCaseFiles.filter(c => c.case_status === "active")
-    const emergencyCases = activeCases.filter(c => c.admission_type_name === "Emergencia")
-    const totalCost = activeCases.reduce((sum, c) => sum + c.total_cost, 0)
-    const totalPaid = activeCases.reduce((sum, c) => sum + c.paid_amount, 0)
-    const totalBalance = activeCases.reduce((sum, c) => sum + c.balance, 0)
+    const active      = caseFiles.filter(c => ACTIVE_STATUSES.has(c.case_status as CaseStatus))
+    const hospitalized = caseFiles.filter(c => c.case_status === CaseStatus.HOSPITALIZED)
+    const discharged  = caseFiles.filter(c => c.case_status === CaseStatus.DISCHARGED)
+    const totalCost   = caseFiles.reduce((s, c) => s + (c.total_cost ?? 0), 0)
+    return { active: active.length, hospitalized: hospitalized.length, discharged: discharged.length, totalCost }
+  }, [caseFiles])
 
-    return {
-      totalActiveCases: activeCases.length,
-      emergencyCases: emergencyCases.length,
-      hospitalizedCases: activeCases.filter(c => c.admission_type_name === "Hospitalización").length,
-      surgeryCases: activeCases.filter(c => c.admission_type_name === "Cirugía Programada").length,
-      totalCost,
-      totalPaid,
-      totalBalance,
-      collectionRate: totalCost > 0 ? (totalPaid / totalCost) * 100 : 0
+  // ── Handlers ───────────────────────────────────────────────────────────────
+  const handleViewCase = async (row: CaseFileListResponse) => {
+    setSelectedCase(row)
+    setValidation(null)
+    setIsDetailOpen(true)
+    setIsDialogLoading(true)
+    try {
+      await fetchCaseFileById(row.id)
+      const v = await validateCaseFile(row.id)
+      setValidation(v)
+    } finally {
+      setIsDialogLoading(false)
     }
-  }, [])
-
-  // Handlers
-  const handleViewCase = (caseFile: any) => {
-    setSelectedCase(caseFile)
-    setIsDetailDialogOpen(true)
   }
 
-  const handleTransferCase = (caseFile: any) => {
-    setSelectedCase(caseFile)
-    setIsTransferDialogOpen(true)
-  }
-
-  const handleCloseCase = (caseFile: any) => {
-    setSelectedCase(caseFile)
-    setIsCloseDialogOpen(true)
-  }
-
-  const handleSubmitTransfer = () => {
-    console.log("Transferir expediente:", transferForm)
-    setIsTransferDialogOpen(false)
-    setSelectedCase(null)
-    setTransferForm({
-      to_department: "",
-      transfer_reason: "",
-      notes: ""
+  const handleEditCase = (row: CaseFileListResponse) => {
+    setSelectedCase(row)
+    setEditForm({
+      initial_diagnosis: selectedCaseFile?.initial_diagnosis ?? "",
+      final_diagnosis:   selectedCaseFile?.final_diagnosis   ?? "",
+      notes:             selectedCaseFile?.notes              ?? "",
     })
+    setIsEditOpen(true)
   }
 
-  const handleSubmitClose = () => {
-    console.log("Cerrar expediente:", selectedCase)
-    setIsCloseDialogOpen(false)
-    setSelectedCase(null)
+  const handleTransferCase = async (row: CaseFileListResponse) => {
+    setSelectedCase(row)
+    setTransferNotes("")
+    setIsDialogLoading(true)
+    const result = await canTransferCase(row.id)
+    setTransferability(result)
+    setIsDialogLoading(false)
+    setIsTransferOpen(true)
   }
 
-  // Obtener configuración del estado
-  const getStatusFlowConfig = (statusFlow: string) => {
-    return statusFlowConfig[statusFlow as keyof typeof statusFlowConfig] || statusFlowConfig.C1_CREACION
+  const handleCloseCase = async (row: CaseFileListResponse) => {
+    setSelectedCase(row)
+    setCloseNotes("")
+    setFinalDiagnosis("")
+    setIsDialogLoading(true)
+    const result = await canCloseCase(row.id)
+    setClosability(result)
+    setIsDialogLoading(false)
+    setIsCloseOpen(true)
   }
 
-  const getAdmissionTypeConfig = (type: string) => {
-    return admissionTypeConfig[type as keyof typeof admissionTypeConfig] || admissionTypeConfig.Emergencia
+  const handleSubmitCreate = async () => {
+    if (!createForm.patient_id || !createForm.admission_type_id || !createForm.chief_complaint) return
+    setIsSubmitting(true)
+    try {
+      await createCaseFile(createForm)
+      setIsCreateOpen(false)
+      setCreateForm(EMPTY_CREATE_FORM)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
-  // Formatear fecha
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-GT', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+  const handleSubmitEdit = async () => {
+    if (!selectedCase) return
+    setIsSubmitting(true)
+    try {
+      await updateCaseFile(selectedCase.id, editForm)
+      setIsEditOpen(false)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleSubmitTransfer = async () => {
+    if (!selectedCase) return
+    setIsSubmitting(true)
+    try {
+      await updateCaseStatus(selectedCase.id, {
+        status: CaseStatusFlow.TR_TRASLADO_PROCEDIMIENTO,
+        notes: transferNotes,
+      })
+      setIsTransferOpen(false)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleSubmitClose = async () => {
+    if (!selectedCase) return
+    setIsSubmitting(true)
+    try {
+      await updateCaseFile(selectedCase.id, {
+        final_diagnosis: finalDiagnosis,
+        notes: closeNotes,
+        case_status: CaseStatus.DISCHARGED,
+        current_status_flow: CaseStatusFlow.C3_CERRADO,
+        discharge_date: new Date().toISOString(),
+      })
+      setIsCloseOpen(false)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  const getStatusFlowConfig = (flow: string) =>
+    statusFlowConfig[flow] ?? { label: flow, color: "bg-gray-100 text-gray-800", icon: FileText }
+
+  const getCaseStatusConfig = (status: string) =>
+    caseStatusConfig[status] ?? { label: status, color: "bg-gray-100 text-gray-800" }
+
+  const formatDate = (d: string) =>
+    new Date(d).toLocaleDateString("es-GT", {
+      day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
     })
-  }
 
-  // Formatear moneda
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-GT', {
-      style: 'currency',
-      currency: 'GTQ',
-      minimumFractionDigits: 2
-    }).format(amount)
-  }
+  const formatCurrency = (n: number) =>
+    new Intl.NumberFormat("es-GT", { style: "currency", currency: "GTQ", minimumFractionDigits: 2 }).format(n)
 
+  const isActiveCaseStatus = (status: string) => ACTIVE_STATUSES.has(status as CaseStatus)
+
+  // Unique admission types from loaded data (for filter dropdown)
+  const admissionTypeOptions = useMemo(() => {
+    const names = new Set(caseFiles.map(c => c.admission_type_name).filter(Boolean))
+    return Array.from(names) as string[]
+  }, [caseFiles])
+
+  // ─── Render ──────────────────────────────────────────────────────────────
   return (
     <DashboardLayout>
       <div className="space-y-6">
+
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Expedientes Médicos</h1>
-            <p className="text-muted-foreground">
-              Gestión de casos y seguimiento de pacientes
-            </p>
+            <p className="text-muted-foreground">Gestión de casos y seguimiento de pacientes</p>
           </div>
           <div className="flex gap-2">
             <Button
@@ -409,1205 +290,1145 @@ export default function CaseFilesPage() {
               onClick={() => setActiveTab(activeTab === "list" ? "analytics" : "list")}
             >
               {activeTab === "list" ? (
-                <>
-                  <TrendingUp className="mr-2 h-4 w-4" />
-                  Análisis
-                </>
+                <><TrendingUp className="mr-2 h-4 w-4" />Análisis</>
               ) : (
-                <>
-                  <FileText className="mr-2 h-4 w-4" />
-                  Ver Lista
-                </>
+                <><FileText className="mr-2 h-4 w-4" />Ver Lista</>
               )}
             </Button>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Nuevo Expediente
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>Crear Nuevo Expediente</DialogTitle>
-                </DialogHeader>
-                {/* Formulario para nuevo expediente - simplificado por ahora */}
-                <div className="py-8 text-center text-muted-foreground">
-                  Formulario para nuevo expediente médico
-                </div>
-              </DialogContent>
-            </Dialog>
+            <Button onClick={() => setIsCreateOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Nuevo Expediente
+            </Button>
           </div>
         </div>
 
-        {/* Stats Cards */}
+        {/* Error banner */}
+        {error && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription className="flex items-center justify-between">
+              {error}
+              <Button variant="ghost" size="sm" onClick={clearError}>Cerrar</Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Stats */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardContent className="flex items-center gap-4 p-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                <FileText className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Casos Activos</p>
-                <p className="text-2xl font-bold">{stats.totalActiveCases}</p>
-                <p className="text-xs text-muted-foreground">
-                  {stats.hospitalizedCases} hospitalizados
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="flex items-center gap-4 p-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
-                <AlertTriangle className="h-6 w-6 text-destructive" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">En Emergencia</p>
-                <p className="text-2xl font-bold">{stats.emergencyCases}</p>
-                <p className="text-xs text-muted-foreground">
-                  Urgencias activas
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="flex items-center gap-4 p-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-success/10">
-                <DollarSign className="h-6 w-6 text-success" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total Facturado</p>
-                <p className="text-2xl font-bold">Q{stats.totalCost.toLocaleString('es-GT', { minimumFractionDigits: 2 })}</p>
-                <p className="text-xs text-muted-foreground">
-                  {stats.collectionRate.toFixed(1)}% cobrado
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="flex items-center gap-4 p-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-warning/10">
-                <DollarSign className="h-6 w-6 text-warning" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Saldo Pendiente</p>
-                <p className="text-2xl font-bold">Q{stats.totalBalance.toLocaleString('es-GT', { minimumFractionDigits: 2 })}</p>
-                <p className="text-xs text-muted-foreground">
-                  Por cobrar
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+          {[
+            { label: "Casos Activos",    value: stats.active,       sub: `${stats.hospitalized} hospitalizados`, icon: FileText,      iconColor: "text-primary",     bg: "bg-primary/10" },
+            { label: "En Hospitalización",value: stats.hospitalized, sub: "Pacientes ingresados",                  icon: BedDouble,     iconColor: "text-purple-600",  bg: "bg-purple-500/10" },
+            { label: "Altas Médicas",    value: stats.discharged,   sub: "Expedientes cerrados",                  icon: CheckCircle,   iconColor: "text-teal-600",    bg: "bg-teal-500/10" },
+            { label: "Total Facturado",  value: formatCurrency(stats.totalCost), sub: "Monto acumulado",           icon: DollarSign,    iconColor: "text-success",     bg: "bg-success/10", isText: true },
+          ].map(({ label, value, sub, icon: Icon, iconColor, bg, isText }) => (
+            <Card key={label}>
+              <CardContent className="flex items-center gap-4 p-4">
+                <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${bg}`}>
+                  <Icon className={`h-6 w-6 ${iconColor}`} />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">{label}</p>
+                  <p className={`font-bold ${isText ? "text-xl" : "text-2xl"}`}>{value}</p>
+                  <p className="text-xs text-muted-foreground">{sub}</p>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList>
             <TabsTrigger value="list" className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              Lista de Expedientes
+              <FileText className="h-4 w-4" />Lista de Expedientes
             </TabsTrigger>
             <TabsTrigger value="analytics" className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
-              Análisis
+              <TrendingUp className="h-4 w-4" />Análisis
             </TabsTrigger>
           </TabsList>
 
-          {/* Tab: Lista de Expedientes */}
+          {/* ── Tab: Lista ─────────────────────────────────────────────────── */}
           <TabsContent value="list" className="space-y-4">
-            {/* Filtros */}
+            {/* Filters */}
             <Card>
               <CardContent className="p-4">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
-                      placeholder="Buscar por número de caso, paciente o doctor..."
+                      placeholder="Buscar por no. de caso o paciente..."
                       value={search}
-                      onChange={(e) => setSearch(e.target.value)}
+                      onChange={e => setSearch(e.target.value)}
                       className="pl-9"
                     />
                   </div>
                   <div className="flex gap-2">
-                    <Select value={statusFilter} onValueChange={setStatusFilter}>
-                      <SelectTrigger className="w-[150px]">
+                    <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
+                      <SelectTrigger className="w-[170px]">
                         <SelectValue placeholder="Estado" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">Todos</SelectItem>
-                        <SelectItem value="active">Activos</SelectItem>
-                        <SelectItem value="closed">Cerrados</SelectItem>
+                        <SelectItem value="all">Todos los estados</SelectItem>
+                        <SelectItem value={CaseStatus.ACTIVE}>Activo</SelectItem>
+                        <SelectItem value={CaseStatus.IN_TREATMENT}>En Tratamiento</SelectItem>
+                        <SelectItem value={CaseStatus.HOSPITALIZED}>Hospitalizado</SelectItem>
+                        <SelectItem value={CaseStatus.SURGERY_SCHEDULED}>Cirugía Programada</SelectItem>
+                        <SelectItem value={CaseStatus.RECOVERING}>Recuperación</SelectItem>
+                        <SelectItem value={CaseStatus.DISCHARGED}>Alta</SelectItem>
+                        <SelectItem value={CaseStatus.TRANSFERRED}>Transferido</SelectItem>
                       </SelectContent>
                     </Select>
-                    <Select value={admissionTypeFilter} onValueChange={setAdmissionTypeFilter}>
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Tipo Ingreso" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos</SelectItem>
-                        <SelectItem value="Emergencia">Emergencia</SelectItem>
-                        <SelectItem value="Consulta Externa">Consulta</SelectItem>
-                        <SelectItem value="Hospitalización">Hospitalización</SelectItem>
-                        <SelectItem value="Cirugía Programada">Cirugía</SelectItem>
-                        <SelectItem value="Recuperación">Recuperación</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    {admissionTypeOptions.length > 0 && (
+                      <Select value={admissionTypeFilter} onValueChange={setAdmissionTypeFilter}>
+                        <SelectTrigger className="w-[170px]">
+                          <SelectValue placeholder="Tipo Ingreso" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todos los tipos</SelectItem>
+                          {admissionTypeOptions.map(t => (
+                            <SelectItem key={t} value={t}>{t}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Tabla de Expedientes */}
+            {/* Table */}
             <Card>
               <CardHeader>
                 <CardTitle>Expedientes Médicos</CardTitle>
                 <CardDescription>
-                  {filteredCaseFiles.length} {filteredCaseFiles.length === 1 ? 'expediente encontrado' : 'expedientes encontrados'}
+                  {isLoading
+                    ? "Cargando expedientes..."
+                    : `${filteredCaseFiles.length} ${filteredCaseFiles.length === 1 ? "expediente encontrado" : "expedientes encontrados"}`}
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>No. Caso</TableHead>
-                      <TableHead>Paciente</TableHead>
-                      <TableHead>Tipo</TableHead>
-                      <TableHead>Fecha Ingreso</TableHead>
-                      <TableHead>Estado</TableHead>
-                      <TableHead>Doctor</TableHead>
-                      <TableHead className="text-right">Costo</TableHead>
-                      <TableHead className="text-right">Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredCaseFiles.map((caseFile) => {
-                      const StatusIcon = getStatusFlowConfig(caseFile.current_status_flow).icon
-                      const AdmissionIcon = getAdmissionTypeConfig(caseFile.admission_type_name).icon
-                      const isEmergency = caseFile.admission_type_name === "Emergencia"
+                {isLoading ? (
+                  <div className="space-y-3">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Skeleton key={i} className="h-16 w-full" />
+                    ))}
+                  </div>
+                ) : filteredCaseFiles.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-center">
+                    <FileText className="mb-4 h-12 w-12 text-muted-foreground/40" />
+                    <p className="font-medium text-muted-foreground">No se encontraron expedientes</p>
+                    <p className="text-sm text-muted-foreground">
+                      {search || statusFilter !== "all" || admissionTypeFilter !== "all"
+                        ? "Intenta ajustar los filtros de búsqueda"
+                        : "Crea el primer expediente médico"}
+                    </p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>No. Caso</TableHead>
+                        <TableHead>Paciente</TableHead>
+                        <TableHead>Tipo Ingreso</TableHead>
+                        <TableHead>Fecha Ingreso</TableHead>
+                        <TableHead>Estado</TableHead>
+                        <TableHead>Flujo</TableHead>
+                        <TableHead className="text-right">Costo</TableHead>
+                        <TableHead className="text-right">Acciones</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredCaseFiles.map(row => {
+                        const flowCfg = getStatusFlowConfig(row.current_status_flow)
+                        const statusCfg = getCaseStatusConfig(row.case_status)
+                        const FlowIcon = flowCfg.icon
+                        const isActive = isActiveCaseStatus(row.case_status)
 
-                      return (
-                        <TableRow key={caseFile.id} className="hover:bg-muted/50">
-                          <TableCell className="font-medium">
-                            <Badge variant="outline" className="font-mono">
-                              {caseFile.case_number}
-                            </Badge>
-                            {isEmergency && (
-                              <div className="mt-1">
-                                <Badge variant="outline" className="gap-1 text-xs bg-destructive/10 text-destructive">
-                                  <AlertTriangle className="h-3 w-3" />
-                                  Emergencia
-                                </Badge>
-                              </div>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex flex-col">
-                              <span className="font-medium">{caseFile.patient_name}</span>
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <span>{caseFile.patient_age} años</span>
-                                <Separator orientation="vertical" className="h-3" />
-                                <span>{caseFile.patient_gender}</span>
-                                <Separator orientation="vertical" className="h-3" />
-                                <span>{caseFile.diagnosis}</span>
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <AdmissionIcon className="h-4 w-4" />
-                              <Badge className={getAdmissionTypeConfig(caseFile.admission_type_name).color}>
-                                {caseFile.admission_type_name}
+                        return (
+                          <TableRow key={row.id} className="hover:bg-muted/50">
+                            <TableCell className="font-medium">
+                              <Badge variant="outline" className="font-mono text-xs">
+                                {row.case_number}
                               </Badge>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Calendar className="h-3 w-3 text-muted-foreground" />
-                              <span className="text-sm">
-                                {formatDate(caseFile.admission_date)}
+                            </TableCell>
+
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <User className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                <span className="font-medium">{row.patient_name}</span>
+                              </div>
+                            </TableCell>
+
+                            <TableCell>
+                              <span className="text-sm text-muted-foreground">
+                                {row.admission_type_name ?? "—"}
                               </span>
-                            </div>
-                            <div className="text-xs text-muted-foreground mt-1">
-                              {caseFile.shift_type === "daytime" ? "Turno diurno" : "Turno nocturno"}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <StatusIcon className="h-4 w-4" />
-                              <Badge className={getStatusFlowConfig(caseFile.current_status_flow).color}>
-                                {getStatusFlowConfig(caseFile.current_status_flow).label}
-                              </Badge>
-                            </div>
-                            {caseFile.case_status === "closed" && (
-                              <Badge variant="outline" className="mt-1 text-xs">
-                                Cerrado
-                              </Badge>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <User className="h-3 w-3 text-muted-foreground" />
-                              <span className="text-sm">{caseFile.primary_doctor}</span>
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              Habitación: {caseFile.assigned_room}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex flex-col items-end">
+                            </TableCell>
+
+                            <TableCell>
+                              <div className="flex items-center gap-1.5 text-sm">
+                                <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                                {formatDate(row.admission_date)}
+                              </div>
+                              {row.shift_type && (
+                                <div className="mt-0.5 text-xs text-muted-foreground">
+                                  {row.shift_type === ShiftType.DAYTIME ? "Turno diurno" : "Turno nocturno"}
+                                </div>
+                              )}
+                            </TableCell>
+
+                            <TableCell>
+                              <Badge className={statusCfg.color}>{statusCfg.label}</Badge>
+                            </TableCell>
+
+                            <TableCell>
+                              <div className="flex items-center gap-1.5">
+                                <FlowIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                                <Badge className={`text-xs ${flowCfg.color}`}>{flowCfg.label}</Badge>
+                              </div>
+                            </TableCell>
+
+                            <TableCell className="text-right">
                               <span className="font-medium">
-                                {formatCurrency(caseFile.total_cost)}
+                                {row.total_cost != null ? formatCurrency(row.total_cost) : "—"}
                               </span>
-                              {caseFile.balance > 0 ? (
-                                <Badge variant="outline" className="gap-1 mt-1 text-xs bg-warning/10 text-warning">
-                                  <DollarSign className="h-3 w-3" />
-                                  {formatCurrency(caseFile.balance)} pendiente
-                                </Badge>
-                              ) : caseFile.paid_amount > 0 ? (
-                                <Badge variant="outline" className="gap-1 mt-1 text-xs bg-success/10 text-success">
-                                  <CheckCircle className="h-3 w-3" />
-                                  Pagado
-                                </Badge>
-                              ) : null}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleViewCase(caseFile)}
-                                title="Ver detalle"
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
+                            </TableCell>
 
-                              {caseFile.case_status === "active" && (
-                                <>
-                                  {mockValidation.allows_transfer && (
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-1">
+                                <Button
+                                  variant="ghost" size="icon"
+                                  onClick={() => handleViewCase(row)}
+                                  title="Ver detalle"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+
+                                {isActive && (
+                                  <>
                                     <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => handleTransferCase(caseFile)}
+                                      variant="ghost" size="icon"
+                                      onClick={() => handleEditCase(row)}
+                                      title="Editar expediente"
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost" size="icon"
+                                      onClick={() => handleTransferCase(row)}
                                       title="Transferir caso"
                                       className="text-blue-600 hover:text-blue-700"
                                     >
                                       <ArrowRightLeft className="h-4 w-4" />
                                     </Button>
-                                  )}
-
-                                  {mockClosability.allowed && (
                                     <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => handleCloseCase(caseFile)}
+                                      variant="ghost" size="icon"
+                                      onClick={() => handleCloseCase(row)}
                                       title="Cerrar caso"
-                                      className="text-success hover:text-success"
+                                      className="text-teal-600 hover:text-teal-700"
                                     >
                                       <CheckCircle className="h-4 w-4" />
                                     </Button>
-                                  )}
-                                </>
-                              )}
+                                  </>
+                                )}
 
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon">
-                                    <MoreVertical className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                                  <DropdownMenuItem onClick={() => handleViewCase(caseFile)}>
-                                    <Eye className="mr-2 h-4 w-4" />
-                                    Ver Detalles
-                                  </DropdownMenuItem>
-
-                                  {caseFile.case_status === "active" && (
-                                    <>
-                                      <DropdownMenuItem onClick={() => handleTransferCase(caseFile)}>
-                                        <ArrowRightLeft className="mr-2 h-4 w-4" />
-                                        Transferir Caso
-                                      </DropdownMenuItem>
-
-                                      {caseFile.assigned_room === "-" && (
-                                        <DropdownMenuItem>
-                                          <BedDouble className="mr-2 h-4 w-4" />
-                                          Asignar Habitación
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon">
+                                      <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                                    <DropdownMenuItem onClick={() => handleViewCase(row)}>
+                                      <Eye className="mr-2 h-4 w-4" />Ver Detalles
+                                    </DropdownMenuItem>
+                                    {isActive && (
+                                      <>
+                                        <DropdownMenuItem onClick={() => handleEditCase(row)}>
+                                          <Edit className="mr-2 h-4 w-4" />Editar Expediente
                                         </DropdownMenuItem>
-                                      )}
-
-                                      <DropdownMenuItem>
-                                        <Users className="mr-2 h-4 w-4" />
-                                        Asignar Doctor
-                                      </DropdownMenuItem>
-
-                                      <DropdownMenuItem>
-                                        <FilePlus className="mr-2 h-4 w-4" />
-                                        Agregar Servicio
-                                      </DropdownMenuItem>
-
-                                      <DropdownMenuSeparator />
-
-                                      <DropdownMenuItem onClick={() => handleCloseCase(caseFile)}>
-                                        <CheckCircle className="mr-2 h-4 w-4" />
-                                        Cerrar Caso
-                                      </DropdownMenuItem>
-                                    </>
-                                  )}
-
-                                  <DropdownMenuSeparator />
-
-                                  <DropdownMenuItem>
-                                    <Printer className="mr-2 h-4 w-4" />
-                                    Imprimir Expediente
-                                  </DropdownMenuItem>
-
-                                  <DropdownMenuItem>
-                                    <Copy className="mr-2 h-4 w-4" />
-                                    Duplicar
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })}
-                  </TableBody>
-                </Table>
+                                        <DropdownMenuItem onClick={() => handleTransferCase(row)}>
+                                          <ArrowRightLeft className="mr-2 h-4 w-4" />Transferir Caso
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem onClick={() => handleCloseCase(row)}>
+                                          <CheckCircle className="mr-2 h-4 w-4" />Cerrar Caso
+                                        </DropdownMenuItem>
+                                      </>
+                                    )}
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem>
+                                      <Printer className="mr-2 h-4 w-4" />Imprimir
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
+                    </TableBody>
+                  </Table>
+                )}
               </CardContent>
-              <CardFooter className="flex-col items-start gap-2 border-t px-6 py-4">
-                <div className="text-sm text-muted-foreground">
-                  <span className="font-medium">Tasa de cobro:</span> {stats.collectionRate.toFixed(1)}%
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="gap-2">
-                    <Download className="h-4 w-4" />
-                    Exportar
-                  </Button>
-                  <Button variant="outline" size="sm" className="gap-2">
-                    <Printer className="h-4 w-4" />
-                    Imprimir Lista
-                  </Button>
-                </div>
-              </CardFooter>
+
+              {/* Pagination */}
+              {pagination.totalPages > 1 && (
+                <CardFooter className="flex items-center justify-between border-t px-6 py-4">
+                  <p className="text-sm text-muted-foreground">
+                    Página {pagination.page} de {pagination.totalPages} — {pagination.total} expedientes
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline" size="sm"
+                      disabled={pagination.page <= 1}
+                      onClick={() => fetchCaseFiles({ page: pagination.page - 1 })}
+                    >
+                      Anterior
+                    </Button>
+                    <Button
+                      variant="outline" size="sm"
+                      disabled={pagination.page >= pagination.totalPages}
+                      onClick={() => fetchCaseFiles({ page: pagination.page + 1 })}
+                    >
+                      Siguiente
+                    </Button>
+                  </div>
+                </CardFooter>
+              )}
             </Card>
           </TabsContent>
 
-          {/* Tab: Análisis */}
+          {/* ── Tab: Análisis ───────────────────────────────────────────────── */}
           <TabsContent value="analytics">
             <Card>
               <CardHeader>
                 <CardTitle>Análisis de Expedientes</CardTitle>
-                <CardDescription>
-                  Estadísticas y métricas de desempeño
-                </CardDescription>
+                <CardDescription>Estadísticas del período cargado</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Distribución por tipo */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">Distribución por Tipo de Ingreso</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {Object.entries(admissionTypeConfig).map(([type, config]) => {
-                          const count = mockCaseFiles.filter(c =>
-                            c.admission_type_name === type && c.case_status === "active"
-                          ).length
-                          const totalActive = mockCaseFiles.filter(c => c.case_status === "active").length
-                          const percentage = totalActive > 0 ? (count / totalActive) * 100 : 0
-                          const Icon = config.icon
-
-                          return count > 0 ? (
-                            <div key={type} className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <div className={`p-1 rounded ${config.color}`}>
-                                  <Icon className="h-3 w-3" />
-                                </div>
-                                <span className="text-sm">{type}</span>
-                              </div>
-                              <div className="flex items-center gap-4">
-                                <div className="w-32">
-                                  <Progress value={percentage} className="h-2" />
-                                </div>
-                                <span className="text-sm font-medium w-12 text-right">
-                                  {count}
-                                </span>
-                              </div>
-                            </div>
-                          ) : null
-                        })}
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Distribución por estado */}
+                  {/* Por estado */}
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-base">Distribución por Estado</CardTitle>
                     </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {Object.entries(statusFlowConfig).map(([status, config]) => {
-                          const count = mockCaseFiles.filter(c =>
-                            c.current_status_flow === status && c.case_status === "active"
-                          ).length
-                          const Icon = config.icon
-
-                          return count > 0 ? (
-                            <div key={status} className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <div className={`p-1 rounded ${config.color}`}>
-                                  <Icon className="h-3 w-3" />
-                                </div>
-                                <span className="text-sm">{config.label}</span>
-                              </div>
-                              <div className="text-right">
-                                <div className="font-medium">{count} casos</div>
-                                <div className="text-xs text-muted-foreground">
-                                  {status.replace('C', '').replace('_', '. ')}
-                                </div>
-                              </div>
+                    <CardContent className="space-y-3">
+                      {Object.entries(caseStatusConfig).map(([status, cfg]) => {
+                        const count = caseFiles.filter(c => c.case_status === status).length
+                        if (count === 0) return null
+                        const pct = caseFiles.length > 0 ? (count / caseFiles.length) * 100 : 0
+                        return (
+                          <div key={status} className="flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Badge className={`shrink-0 ${cfg.color}`}>{cfg.label}</Badge>
                             </div>
-                          ) : null
-                        })}
-                      </div>
+                            <div className="flex items-center gap-3 flex-1">
+                              <Progress value={pct} className="h-2 flex-1" />
+                              <span className="text-sm font-medium w-8 text-right">{count}</span>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </CardContent>
+                  </Card>
+
+                  {/* Por tipo de ingreso */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Por Tipo de Ingreso</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {admissionTypeOptions.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">Sin datos disponibles</p>
+                      ) : admissionTypeOptions.map(type => {
+                        const count = caseFiles.filter(c => c.admission_type_name === type).length
+                        const pct = caseFiles.length > 0 ? (count / caseFiles.length) * 100 : 0
+                        return (
+                          <div key={type} className="flex items-center justify-between gap-4">
+                            <span className="text-sm min-w-[120px]">{type}</span>
+                            <div className="flex items-center gap-3 flex-1">
+                              <Progress value={pct} className="h-2 flex-1" />
+                              <span className="text-sm font-medium w-8 text-right">{count}</span>
+                            </div>
+                          </div>
+                        )
+                      })}
                     </CardContent>
                   </Card>
                 </div>
 
                 {/* Métricas financieras */}
-                <div className="mt-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">Métricas Financieras</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="space-y-2">
-                          <div className="text-sm text-muted-foreground">Valor Promedio por Caso</div>
-                          <div className="text-2xl font-bold text-primary">
-                            {stats.totalActiveCases > 0
-                              ? formatCurrency(stats.totalCost / stats.totalActiveCases)
-                              : formatCurrency(0)}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {stats.totalActiveCases} casos activos
-                          </div>
-                        </div>
-
-                        <div className="space-y-2">
-                          <div className="text-sm text-muted-foreground">Tiempo Promedio de Estancia</div>
-                          <div className="text-2xl font-bold text-success">
-                            3.2 días
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            En casos hospitalizados
-                          </div>
-                        </div>
-
-                        <div className="space-y-2">
-                          <div className="text-sm text-muted-foreground">Cartera Vencida</div>
-                          <div className="text-2xl font-bold text-destructive">
-                            {formatCurrency(stats.totalBalance * 0.3)}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            30% del saldo pendiente
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Métricas Financieras</CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">Total Facturado</p>
+                      <p className="text-2xl font-bold text-primary">{formatCurrency(stats.totalCost)}</p>
+                      <p className="text-xs text-muted-foreground">{caseFiles.length} expedientes</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">Valor Promedio por Caso</p>
+                      <p className="text-2xl font-bold text-success">
+                        {caseFiles.length > 0 ? formatCurrency(stats.totalCost / caseFiles.length) : "Q0.00"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">Promedio general</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">Casos Activos</p>
+                      <p className="text-2xl font-bold">{stats.active}</p>
+                      <p className="text-xs text-muted-foreground">De {caseFiles.length} totales</p>
+                    </div>
+                  </CardContent>
+                </Card>
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
+      </div>
 
-        {/* Dialog para Detalle del Expediente */}
-        <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
-          <DialogContent className="max-w-6xl max-h-[90vh]">
-            {selectedCase && (
-              <>
-                <DialogHeader>
-                  <DialogTitle>Detalle del Expediente</DialogTitle>
-                  <CardDescription className="pt-2">
-                    Caso: <span className="font-mono">{selectedCase.case_number}</span> •
-                    Paciente: <span className="font-medium">{selectedCase.patient_name}</span>
-                  </CardDescription>
-                </DialogHeader>
+      {/* ══════════════════════════════════════════════════════════════════════
+          Dialog: VER DETALLE
+      ═══════════════════════════════════════════════════════════════════════ */}
+      <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh]">
+          {selectedCase && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Detalle del Expediente</DialogTitle>
+                <CardDescription className="pt-1">
+                  <span className="font-mono">{selectedCase.case_number}</span>
+                  {" · "}
+                  <span className="font-medium">{selectedCase.patient_name}</span>
+                </CardDescription>
+              </DialogHeader>
 
-                <ScrollArea className="h-[70vh] pr-4">
-                  <Tabs defaultValue="overview" className="space-y-6">
+              <ScrollArea className="h-[68vh] pr-4">
+                {isDialogLoading ? (
+                  <div className="space-y-4 py-4">
+                    <Skeleton className="h-40 w-full" />
+                    <Skeleton className="h-40 w-full" />
+                  </div>
+                ) : selectedCaseFile ? (
+                  <Tabs defaultValue="overview" className="space-y-4">
                     <TabsList>
                       <TabsTrigger value="overview">Resumen</TabsTrigger>
-                      <TabsTrigger value="doctors">Médicos</TabsTrigger>
-                      <TabsTrigger value="services">Servicios</TabsTrigger>
-                      <TabsTrigger value="history">Historial</TabsTrigger>
+                      <TabsTrigger value="rooms">
+                        Habitaciones
+                        {selectedCaseFile.rooms && selectedCaseFile.rooms.length > 0 && (
+                          <Badge variant="secondary" className="ml-1.5 text-xs">{selectedCaseFile.rooms.length}</Badge>
+                        )}
+                      </TabsTrigger>
+                      <TabsTrigger value="packages">
+                        Paquetes
+                        {selectedCaseFile.packages && selectedCaseFile.packages.length > 0 && (
+                          <Badge variant="secondary" className="ml-1.5 text-xs">{selectedCaseFile.packages.length}</Badge>
+                        )}
+                      </TabsTrigger>
                       <TabsTrigger value="validation">Validación</TabsTrigger>
                     </TabsList>
 
-                    {/* Tab: Resumen */}
-                    <TabsContent value="overview" className="space-y-6">
-                      <div className="grid grid-cols-3 gap-6">
-                        {/* Información del paciente */}
+                    {/* Resumen */}
+                    <TabsContent value="overview" className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Paciente */}
                         <Card>
-                          <CardHeader>
-                            <CardTitle className="text-base">Información del Paciente</CardTitle>
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-base flex items-center gap-2">
+                              <User className="h-4 w-4" />Información del Paciente
+                            </CardTitle>
                           </CardHeader>
                           <CardContent className="space-y-3">
                             <div>
                               <Label className="text-xs text-muted-foreground">Nombre Completo</Label>
-                              <div className="font-medium">{selectedCase.patient_name}</div>
+                              <p className="font-medium">
+                                {selectedCaseFile.patient
+                                  ? `${selectedCaseFile.patient.first_name} ${selectedCaseFile.patient.last_name}`
+                                  : selectedCase.patient_name}
+                              </p>
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
+                            {selectedCaseFile.patient && (
                               <div>
-                                <Label className="text-xs text-muted-foreground">Edad</Label>
-                                <div className="font-medium">{selectedCase.patient_age} años</div>
+                                <Label className="text-xs text-muted-foreground">No. de Expediente Paciente</Label>
+                                <p className="font-mono text-sm">{selectedCaseFile.patient.file_number}</p>
                               </div>
-                              <div>
-                                <Label className="text-xs text-muted-foreground">Género</Label>
-                                <div className="font-medium">{selectedCase.patient_gender}</div>
-                              </div>
-                            </div>
+                            )}
                             <div>
-                              <Label className="text-xs text-muted-foreground">Diagnóstico Principal</Label>
-                              <div className="font-medium">{selectedCase.diagnosis}</div>
+                              <Label className="text-xs text-muted-foreground">Motivo de Consulta</Label>
+                              <p className="text-sm">{selectedCaseFile.chief_complaint || "—"}</p>
                             </div>
                           </CardContent>
                         </Card>
 
-                        {/* Información del caso */}
+                        {/* Caso */}
                         <Card>
-                          <CardHeader>
-                            <CardTitle className="text-base">Información del Caso</CardTitle>
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-base flex items-center gap-2">
+                              <Stethoscope className="h-4 w-4" />Información del Caso
+                            </CardTitle>
                           </CardHeader>
                           <CardContent className="space-y-3">
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <Label className="text-xs text-muted-foreground">Estado</Label>
+                                <div className="mt-1">
+                                  <Badge className={getCaseStatusConfig(selectedCaseFile.case_status).color}>
+                                    {getCaseStatusConfig(selectedCaseFile.case_status).label}
+                                  </Badge>
+                                </div>
+                              </div>
+                              <div>
+                                <Label className="text-xs text-muted-foreground">Flujo Actual</Label>
+                                <div className="mt-1">
+                                  <Badge className={getStatusFlowConfig(selectedCaseFile.current_status_flow).color}>
+                                    {getStatusFlowConfig(selectedCaseFile.current_status_flow).label}
+                                  </Badge>
+                                </div>
+                              </div>
+                            </div>
                             <div>
                               <Label className="text-xs text-muted-foreground">Tipo de Ingreso</Label>
-                              <div className="flex items-center gap-2">
-                                <Badge className={getAdmissionTypeConfig(selectedCase.admission_type_name).color}>
-                                  {selectedCase.admission_type_name}
-                                </Badge>
-                              </div>
+                              <p className="text-sm font-medium">
+                                {selectedCaseFile.admissionType?.name ?? selectedCaseFile.admission_type ?? "—"}
+                              </p>
                             </div>
-                            <div>
-                              <Label className="text-xs text-muted-foreground">Fecha de Ingreso</Label>
-                              <div className="font-medium">{formatDate(selectedCase.admission_date)}</div>
-                            </div>
-                            <div>
-                              <Label className="text-xs text-muted-foreground">Estado Actual</Label>
-                              <div className="flex items-center gap-2">
-                                <Badge className={getStatusFlowConfig(selectedCase.current_status_flow).color}>
-                                  {getStatusFlowConfig(selectedCase.current_status_flow).label}
-                                </Badge>
-                                <Badge variant={selectedCase.case_status === "active" ? "default" : "secondary"}>
-                                  {selectedCase.case_status === "active" ? "Activo" : "Cerrado"}
-                                </Badge>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <Label className="text-xs text-muted-foreground">Fecha Ingreso</Label>
+                                <p className="text-sm">{formatDate(selectedCaseFile.admission_date)}</p>
                               </div>
+                              {selectedCaseFile.discharge_date && (
+                                <div>
+                                  <Label className="text-xs text-muted-foreground">Fecha Alta</Label>
+                                  <p className="text-sm">{formatDate(selectedCaseFile.discharge_date)}</p>
+                                </div>
+                              )}
                             </div>
                             <div>
                               <Label className="text-xs text-muted-foreground">Turno</Label>
-                              <div className="font-medium">
-                                {selectedCase.shift_type === "daytime" ? "Turno Diurno" : "Turno Nocturno"}
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-
-                        {/* Información financiera */}
-                        <Card>
-                          <CardHeader>
-                            <CardTitle className="text-base">Información Financiera</CardTitle>
-                          </CardHeader>
-                          <CardContent className="space-y-3">
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <Label className="text-xs text-muted-foreground">Costo Total</Label>
-                                <div className="font-medium">{formatCurrency(selectedCase.total_cost)}</div>
-                              </div>
-                              <div>
-                                <Label className="text-xs text-muted-foreground">Pagado</Label>
-                                <div className="font-medium text-success">{formatCurrency(selectedCase.paid_amount)}</div>
-                              </div>
-                            </div>
-                            <div>
-                              <Label className="text-xs text-muted-foreground">Saldo Pendiente</Label>
-                              <div className={`font-medium ${selectedCase.balance > 0 ? "text-destructive" : "text-success"}`}>
-                                {formatCurrency(selectedCase.balance)}
-                              </div>
-                            </div>
-                            <div className="pt-2">
-                              <div className="flex justify-between text-sm mb-1">
-                                <span>Progreso de Pago</span>
-                                <span>{selectedCase.total_cost > 0
-                                  ? ((selectedCase.paid_amount / selectedCase.total_cost) * 100).toFixed(1)
-                                  : 0}%
-                                </span>
-                              </div>
-                              <Progress
-                                value={selectedCase.total_cost > 0
-                                  ? (selectedCase.paid_amount / selectedCase.total_cost) * 100
-                                  : 0}
-                                className="h-2"
-                              />
+                              <p className="text-sm">
+                                {selectedCaseFile.shift_type === ShiftType.DAYTIME ? "Turno Diurno" : "Turno Nocturno"}
+                              </p>
                             </div>
                           </CardContent>
                         </Card>
                       </div>
 
-                      {/* Validación del caso */}
+                      {/* Diagnósticos */}
+                      <Card>
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-base flex items-center gap-2">
+                            <ClipboardCheck className="h-4 w-4" />Diagnósticos
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Diagnóstico Inicial</Label>
+                            <p className="text-sm mt-1">{selectedCaseFile.initial_diagnosis || "No registrado"}</p>
+                          </div>
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Diagnóstico Final</Label>
+                            <p className="text-sm mt-1">{selectedCaseFile.final_diagnosis || "No registrado"}</p>
+                          </div>
+                          {selectedCaseFile.notes && (
+                            <div className="md:col-span-2">
+                              <Label className="text-xs text-muted-foreground">Notas</Label>
+                              <p className="text-sm mt-1 text-muted-foreground">{selectedCaseFile.notes}</p>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+
+                      {/* Financiero */}
+                      {selectedCaseFile.total_cost != null && (
+                        <Card>
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-base flex items-center gap-2">
+                              <DollarSign className="h-4 w-4" />Información Financiera
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-muted-foreground">Costo Total:</span>
+                              <span className="text-lg font-bold">{formatCurrency(selectedCaseFile.total_cost)}</span>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
+                    </TabsContent>
+
+                    {/* Habitaciones */}
+                    <TabsContent value="rooms">
                       <Card>
                         <CardHeader>
-                          <CardTitle className="text-base">Validación del Expediente</CardTitle>
+                          <CardTitle className="text-base flex items-center gap-2">
+                            <BedDouble className="h-4 w-4" />Habitaciones Asignadas
+                          </CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <div className={`p-4 rounded-lg text-center ${mockValidation.requires_hospitalization && mockValidation.has_room_assigned
-                                ? "bg-success/10 text-success"
-                                : mockValidation.requires_hospitalization
-                                  ? "bg-warning/10 text-warning"
-                                  : "bg-muted/10 text-muted-foreground"
-                              }`}>
-                              <BedDouble className="h-6 w-6 mx-auto mb-2" />
-                              <div className="font-medium">Habitación</div>
-                              <div className="text-sm">
-                                {mockValidation.has_room_assigned ? "Asignada" : "No asignada"}
-                              </div>
+                          {!selectedCaseFile.rooms || selectedCaseFile.rooms.length === 0 ? (
+                            <div className="flex flex-col items-center py-10 text-center text-muted-foreground">
+                              <BedDouble className="mb-3 h-10 w-10 opacity-30" />
+                              <p className="font-medium">Sin habitación asignada</p>
                             </div>
-
-                            <div className={`p-4 rounded-lg text-center ${mockValidation.requires_package && mockValidation.has_package_assigned
-                                ? "bg-success/10 text-success"
-                                : mockValidation.requires_package
-                                  ? "bg-warning/10 text-warning"
-                                  : "bg-muted/10 text-muted-foreground"
-                              }`}>
-                              <ClipboardCheck className="h-6 w-6 mx-auto mb-2" />
-                              <div className="font-medium">Paquete</div>
-                              <div className="text-sm">
-                                {mockValidation.has_package_assigned ? "Asignado" : "No requerido"}
-                              </div>
-                            </div>
-
-                            <div className={`p-4 rounded-lg text-center ${mockValidation.requires_immediate_payment && mockValidation.has_payment
-                                ? "bg-success/10 text-success"
-                                : mockValidation.requires_immediate_payment
-                                  ? "bg-warning/10 text-warning"
-                                  : "bg-muted/10 text-muted-foreground"
-                              }`}>
-                              <DollarSign className="h-6 w-6 mx-auto mb-2" />
-                              <div className="font-medium">Pago</div>
-                              <div className="text-sm">
-                                {mockValidation.has_payment ? "Realizado" : "No requerido"}
-                              </div>
-                            </div>
-
-                            <div className={`p-4 rounded-lg text-center ${mockValidation.validation_status === "COMPLIANT"
-                                ? "bg-success/10 text-success"
-                                : "bg-warning/10 text-warning"
-                              }`}>
-                              <Shield className="h-6 w-6 mx-auto mb-2" />
-                              <div className="font-medium">Validación</div>
-                              <div className="text-sm">
-                                {mockValidation.validation_status === "COMPLIANT" ? "Cumplido" : "Pendiente"}
-                              </div>
-                            </div>
-                          </div>
-
-                          {mockValidation.validation_messages.length > 0 && (
-                            <Alert className="mt-4">
-                              <AlertTriangle className="h-4 w-4" />
-                              <AlertTitle>Mensajes de Validación</AlertTitle>
-                              <AlertDescription>
-                                <ul className="list-disc pl-4 mt-2">
-                                  {mockValidation.validation_messages.map((msg, idx) => (
-                                    <li key={idx} className="text-sm">{msg}</li>
-                                  ))}
-                                </ul>
-                              </AlertDescription>
-                            </Alert>
+                          ) : (
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Habitación</TableHead>
+                                  <TableHead>Tipo</TableHead>
+                                  <TableHead>Ingreso</TableHead>
+                                  <TableHead>Egreso</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {selectedCaseFile.rooms.map(room => (
+                                  <TableRow key={room.id}>
+                                    <TableCell className="font-medium">{room.room_number}</TableCell>
+                                    <TableCell>{room.room_type}</TableCell>
+                                    <TableCell>{formatDate(room.check_in_date)}</TableCell>
+                                    <TableCell>{room.check_out_date ? formatDate(room.check_out_date) : <span className="text-muted-foreground">Actual</span>}</TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
                           )}
                         </CardContent>
                       </Card>
                     </TabsContent>
 
-                    {/* Tab: Médicos */}
-                    <TabsContent value="doctors">
+                    {/* Paquetes */}
+                    <TabsContent value="packages">
                       <Card>
                         <CardHeader>
-                          <CardTitle className="text-base">Médicos Asignados</CardTitle>
+                          <CardTitle className="text-base flex items-center gap-2">
+                            <Package className="h-4 w-4" />Paquetes Asignados
+                          </CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead>Médico</TableHead>
-                                <TableHead>Rol</TableHead>
-                                <TableHead>Asignado el</TableHead>
-                                <TableHead>Notas</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {mockCaseDoctors.map((doctor) => (
-                                <TableRow key={doctor.id}>
-                                  <TableCell>
-                                    <div className="font-medium">{doctor.doctor_name}</div>
-                                  </TableCell>
-                                  <TableCell>
-                                    <Badge variant="outline">{doctor.role}</Badge>
-                                  </TableCell>
-                                  <TableCell>
-                                    {formatDate(doctor.assigned_at)}
-                                  </TableCell>
-                                  <TableCell className="text-sm text-muted-foreground">
-                                    {doctor.notes}
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </CardContent>
-                      </Card>
-                    </TabsContent>
-
-                    {/* Tab: Servicios */}
-                    <TabsContent value="services">
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="text-base">Servicios Aplicados</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead>Servicio</TableHead>
-                                <TableHead className="text-right">Cantidad</TableHead>
-                                <TableHead className="text-right">Precio Unitario</TableHead>
-                                <TableHead className="text-right">Total</TableHead>
-                                <TableHead>Aplicado el</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {mockCaseServices.map((service) => (
-                                <TableRow key={service.id}>
-                                  <TableCell>
-                                    <div className="font-medium">{service.service_name}</div>
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    {service.quantity}
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    {formatCurrency(parseFloat(service.unit_price))}
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    <div className="font-medium">
-                                      {formatCurrency(parseFloat(service.total_price))}
-                                    </div>
-                                  </TableCell>
-                                  <TableCell>
-                                    {formatDate(service.applied_at)}
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-
-                          <Separator className="my-4" />
-
-                          <div className="flex justify-end">
-                            <div className="text-right">
-                              <div className="text-sm text-muted-foreground">Total Servicios:</div>
-                              <div className="text-2xl font-bold text-primary">
-                                {formatCurrency(mockCaseServices.reduce((sum, s) => sum + parseFloat(s.total_price), 0))}
-                              </div>
+                          {!selectedCaseFile.packages || selectedCaseFile.packages.length === 0 ? (
+                            <div className="flex flex-col items-center py-10 text-center text-muted-foreground">
+                              <Package className="mb-3 h-10 w-10 opacity-30" />
+                              <p className="font-medium">Sin paquetes asignados</p>
                             </div>
-                          </div>
+                          ) : (
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Paquete</TableHead>
+                                  <TableHead>Médico</TableHead>
+                                  <TableHead className="text-right">Precio Aplicado</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {selectedCaseFile.packages.map(pkg => (
+                                  <TableRow key={pkg.id}>
+                                    <TableCell className="font-medium">{pkg.package_name}</TableCell>
+                                    <TableCell>{pkg.doctor_name}</TableCell>
+                                    <TableCell className="text-right">{formatCurrency(pkg.price_applied)}</TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          )}
                         </CardContent>
                       </Card>
                     </TabsContent>
 
-                    {/* Tab: Historial */}
-                    <TabsContent value="history">
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="text-base">Historial de Estados</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-4">
-                            {mockStatusHistory.map((history) => (
-                              <div key={history.id} className="flex items-start gap-4 p-4 border rounded-lg">
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <Badge variant="outline">{history.from_status}</Badge>
-                                    <ArrowRightLeft className="h-4 w-4 text-muted-foreground" />
-                                    <Badge>{history.to_status}</Badge>
-                                  </div>
-                                  <div className="text-sm text-muted-foreground mb-2">
-                                    {formatDate(history.transition_date)}
-                                  </div>
-                                  <div className="text-sm">
-                                    <span className="font-medium">Razón:</span> {history.reason}
-                                  </div>
-                                  <div className="text-sm text-muted-foreground mt-1">
-                                    Realizado por: {history.performed_by}
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </TabsContent>
-
-                    {/* Tab: Validación */}
+                    {/* Validación */}
                     <TabsContent value="validation">
                       <Card>
                         <CardHeader>
-                          <CardTitle className="text-base">Validación Completa del Expediente</CardTitle>
+                          <CardTitle className="text-base flex items-center gap-2">
+                            <Shield className="h-4 w-4" />Validación del Expediente
+                          </CardTitle>
                         </CardHeader>
-                        <CardContent>
-                          <div className="space-y-6">
-                            <Alert className={mockValidation.validation_status === "COMPLIANT" ? "bg-success/10" : "bg-warning/10"}>
-                              {mockValidation.validation_status === "COMPLIANT" ? (
-                                <CheckCircle className="h-4 w-4" />
-                              ) : (
-                                <AlertTriangle className="h-4 w-4" />
-                              )}
-                              <AlertTitle>
-                                Estado de Validación: {mockValidation.validation_status}
-                              </AlertTitle>
-                              <AlertDescription>
-                                El expediente {mockValidation.validation_status === "COMPLIANT"
-                                  ? "cumple con todos los requisitos"
-                                  : "tiene requisitos pendientes"}
-                              </AlertDescription>
-                            </Alert>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                              <div className="space-y-4">
-                                <h4 className="font-medium">Requisitos del Sistema</h4>
-                                <div className="space-y-3">
-                                  {[
-                                    {
-                                      label: "Requiere Hospitalización",
-                                      value: mockValidation.requires_hospitalization,
-                                      required: mockValidation.requires_hospitalization
-                                    },
-                                    {
-                                      label: "Habitación Asignada",
-                                      value: mockValidation.has_room_assigned,
-                                      required: mockValidation.requires_hospitalization
-                                    },
-                                    {
-                                      label: "Requiere Paquete",
-                                      value: mockValidation.requires_package,
-                                      required: mockValidation.requires_package
-                                    },
-                                    {
-                                      label: "Paquete Asignado",
-                                      value: mockValidation.has_package_assigned,
-                                      required: mockValidation.requires_package
-                                    }
-                                  ].map((req, idx) => (
-                                    <div key={idx} className="flex items-center justify-between p-3 border rounded-lg">
-                                      <div>
-                                        <div className="font-medium">{req.label}</div>
-                                        {req.required && (
-                                          <div className="text-xs text-muted-foreground">Requerido</div>
-                                        )}
-                                      </div>
-                                      <div className={req.value ? "text-success" : req.required ? "text-destructive" : "text-muted-foreground"}>
-                                        {req.value ? (
-                                          <CheckCircle className="h-5 w-5" />
-                                        ) : req.required ? (
-                                          <XCircle className="h-5 w-5" />
-                                        ) : (
-                                          <Clock className="h-5 w-5" />
-                                        )}
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-
-                              <div className="space-y-4">
-                                <h4 className="font-medium">Permisos y Estados</h4>
-                                <div className="space-y-3">
-                                  {[
-                                    {
-                                      label: "Permite Transferencia",
-                                      value: mockValidation.allows_transfer,
-                                      icon: ArrowRightLeft
-                                    },
-                                    {
-                                      label: "Es Transferencia",
-                                      value: mockValidation.is_transfer,
-                                      icon: RefreshCw
-                                    },
-                                    {
-                                      label: "Requiere Pago Inmediato",
-                                      value: mockValidation.requires_immediate_payment,
-                                      icon: DollarSign
-                                    },
-                                    {
-                                      label: "Tiene Pago Realizado",
-                                      value: mockValidation.has_payment,
-                                      icon: CheckCircle
-                                    }
-                                  ].map((perm, idx) => (
-                                    <div key={idx} className="flex items-center justify-between p-3 border rounded-lg">
-                                      <div className="flex items-center gap-3">
-                                        <perm.icon className="h-4 w-4 text-muted-foreground" />
-                                        <div>
-                                          <div className="font-medium">{perm.label}</div>
-                                        </div>
-                                      </div>
-                                      <div className={perm.value ? "text-success" : "text-muted-foreground"}>
-                                        {perm.value ? (
-                                          <CheckCircle className="h-5 w-5" />
-                                        ) : (
-                                          <Clock className="h-5 w-5" />
-                                        )}
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
+                        <CardContent className="space-y-4">
+                          {!validation ? (
+                            <div className="flex items-center justify-center py-8 gap-3 text-muted-foreground">
+                              <Loader2 className="h-5 w-5 animate-spin" />
+                              Cargando validación...
                             </div>
-                          </div>
+                          ) : (
+                            <>
+                              <Alert className={
+                                validation.validation_status === ValidationStatus.COMPLIANT
+                                  ? "bg-success/10 border-success/30"
+                                  : "bg-warning/10 border-warning/30"
+                              }>
+                                {validation.validation_status === ValidationStatus.COMPLIANT
+                                  ? <CheckCircle className="h-4 w-4 text-success" />
+                                  : <AlertTriangle className="h-4 w-4 text-warning" />}
+                                <AlertTitle>
+                                  {validation.validation_status === ValidationStatus.COMPLIANT
+                                    ? "Expediente Conforme"
+                                    : "Expediente con Observaciones"}
+                                </AlertTitle>
+                                <AlertDescription>
+                                  {validation.validation_status === ValidationStatus.COMPLIANT
+                                    ? "Cumple con todos los requisitos del sistema."
+                                    : "Hay requisitos pendientes por completar."}
+                                </AlertDescription>
+                              </Alert>
+
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                {[
+                                  {
+                                    label: "Habitación",
+                                    ok: validation.has_room_assigned,
+                                    required: validation.requires_hospitalization,
+                                    icon: BedDouble,
+                                  },
+                                  {
+                                    label: "Paquete",
+                                    ok: validation.has_package_assigned,
+                                    required: validation.requires_package,
+                                    icon: Package,
+                                  },
+                                  {
+                                    label: "Pago",
+                                    ok: validation.has_payment,
+                                    required: validation.requires_immediate_payment,
+                                    icon: DollarSign,
+                                  },
+                                  {
+                                    label: "Transferencia",
+                                    ok: validation.allows_transfer,
+                                    required: false,
+                                    icon: ArrowRightLeft,
+                                  },
+                                ].map(({ label, ok, required, icon: Icon }) => (
+                                  <div
+                                    key={label}
+                                    className={`rounded-lg p-4 text-center ${
+                                      ok ? "bg-success/10 text-success"
+                                        : required ? "bg-warning/10 text-warning"
+                                        : "bg-muted/40 text-muted-foreground"
+                                    }`}
+                                  >
+                                    <Icon className="h-5 w-5 mx-auto mb-1.5" />
+                                    <p className="text-sm font-medium">{label}</p>
+                                    <p className="text-xs">{ok ? "Cumplido" : required ? "Pendiente" : "N/A"}</p>
+                                  </div>
+                                ))}
+                              </div>
+
+                              {validation.validation_messages.length > 0 && (
+                                <Alert variant="destructive">
+                                  <AlertTriangle className="h-4 w-4" />
+                                  <AlertTitle>Mensajes del Sistema</AlertTitle>
+                                  <AlertDescription>
+                                    <ul className="list-disc pl-4 mt-2 space-y-1">
+                                      {validation.validation_messages.map((msg, i) => (
+                                        <li key={i} className="text-sm">{msg}</li>
+                                      ))}
+                                    </ul>
+                                  </AlertDescription>
+                                </Alert>
+                              )}
+                            </>
+                          )}
                         </CardContent>
                       </Card>
                     </TabsContent>
                   </Tabs>
-                </ScrollArea>
-
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsDetailDialogOpen(false)}>
-                    Cerrar
-                  </Button>
-                  {selectedCase.case_status === "active" && mockClosability.allowed && (
-                    <Button onClick={() => {
-                      setIsDetailDialogOpen(false)
-                      handleCloseCase(selectedCase)
-                    }}>
-                      <CheckCircle className="mr-2 h-4 w-4" />
-                      Cerrar Expediente
-                    </Button>
-                  )}
-                </DialogFooter>
-              </>
-            )}
-          </DialogContent>
-        </Dialog>
-
-        {/* Dialog para Transferir Expediente */}
-        <Dialog open={isTransferDialogOpen} onOpenChange={setIsTransferDialogOpen}>
-          <DialogContent className="max-w-md">
-            {selectedCase && (
-              <>
-                <DialogHeader>
-                  <DialogTitle>Transferir Expediente</DialogTitle>
-                  <CardDescription className="pt-2">
-                    Caso: <span className="font-mono">{selectedCase.case_number}</span>
-                  </CardDescription>
-                </DialogHeader>
-
-                <div className="space-y-6 py-4">
-                  <Alert>
-                    <ArrowRightLeft className="h-4 w-4" />
-                    <AlertTitle>Transferencia de Caso</AlertTitle>
-                    <AlertDescription>
-                      Transferir este expediente a otro departamento o médico.
-                    </AlertDescription>
-                  </Alert>
-
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="to_department">Departamento Destino</Label>
-                      <Select
-                        value={transferForm.to_department}
-                        onValueChange={(value) => setTransferForm({ ...transferForm, to_department: value })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleccionar departamento" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="emergency">Emergencias</SelectItem>
-                          <SelectItem value="surgery">Cirugía</SelectItem>
-                          <SelectItem value="internal_medicine">Medicina Interna</SelectItem>
-                          <SelectItem value="pediatrics">Pediatría</SelectItem>
-                          <SelectItem value="gynecology">Ginecología</SelectItem>
-                          <SelectItem value="intensive_care">Cuidados Intensivos</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="transfer_reason">Razón de Transferencia</Label>
-                      <Select
-                        value={transferForm.transfer_reason}
-                        onValueChange={(value) => setTransferForm({ ...transferForm, transfer_reason: value })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleccionar razón" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="specialty_care">Cuidado especializado requerido</SelectItem>
-                          <SelectItem value="bed_availability">Disponibilidad de camas</SelectItem>
-                          <SelectItem value="doctor_referral">Referencia médica</SelectItem>
-                          <SelectItem value="patient_request">Solicitud del paciente</SelectItem>
-                          <SelectItem value="equipment_need">Necesidad de equipo especial</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="notes">Notas Adicionales</Label>
-                      <Textarea
-                        id="notes"
-                        placeholder="Agregar notas sobre la transferencia..."
-                        value={transferForm.notes}
-                        onChange={(e) => setTransferForm({ ...transferForm, notes: e.target.value })}
-                        rows={3}
-                      />
-                    </div>
-
-                    <Card>
-                      <CardContent className="p-4">
-                        <div className="space-y-2">
-                          <div className="text-sm text-muted-foreground">Paciente a transferir:</div>
-                          <div className="font-medium">{selectedCase.patient_name}</div>
-                          <div className="text-xs text-muted-foreground">
-                            Diagnóstico: {selectedCase.diagnosis}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
+                ) : (
+                  <div className="flex items-center justify-center py-12 text-muted-foreground gap-3">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    Cargando expediente...
                   </div>
+                )}
+              </ScrollArea>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsDetailOpen(false)}>Cerrar</Button>
+                {selectedCaseFile && isActiveCaseStatus(selectedCaseFile.case_status) && (
+                  <>
+                    <Button variant="outline" onClick={() => { setIsDetailOpen(false); handleEditCase(selectedCase) }}>
+                      <Edit className="mr-2 h-4 w-4" />Editar
+                    </Button>
+                    <Button onClick={() => { setIsDetailOpen(false); handleCloseCase(selectedCase) }}>
+                      <CheckCircle className="mr-2 h-4 w-4" />Cerrar Expediente
+                    </Button>
+                  </>
+                )}
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          Dialog: CREAR EXPEDIENTE
+      ═══════════════════════════════════════════════════════════════════════ */}
+      <Dialog open={isCreateOpen} onOpenChange={open => { if (!isSubmitting) { setIsCreateOpen(open); if (!open) setCreateForm(EMPTY_CREATE_FORM) } }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Nuevo Expediente Médico</DialogTitle>
+            <CardDescription>Complete los datos para crear el expediente</CardDescription>
+          </DialogHeader>
+
+          <ScrollArea className="max-h-[60vh] pr-4">
+            <div className="space-y-4 py-2">
+              {/* Paciente */}
+              <div className="space-y-2">
+                <Label htmlFor="create-patient">Paciente <span className="text-destructive">*</span></Label>
+                <Select
+                  value={createForm.patient_id}
+                  onValueChange={v => setCreateForm(f => ({ ...f, patient_id: v }))}
+                >
+                  <SelectTrigger id="create-patient">
+                    <SelectValue placeholder="Seleccionar paciente..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {patients.map(p => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.fullName || `${p.firstName} ${p.lastName}`}
+                        {p.fileNumber && <span className="text-muted-foreground ml-2 text-xs">({p.fileNumber})</span>}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Tipo de ingreso */}
+              <div className="space-y-2">
+                <Label htmlFor="create-admission-type">Tipo de Ingreso <span className="text-destructive">*</span></Label>
+                <Input
+                  id="create-admission-type"
+                  placeholder="ID del tipo de ingreso"
+                  value={createForm.admission_type_id}
+                  onChange={e => setCreateForm(f => ({ ...f, admission_type_id: e.target.value }))}
+                />
+                <p className="text-xs text-muted-foreground">Ingresa el ID del tipo de admisión configurado en el sistema</p>
+              </div>
+
+              {/* Motivo de consulta */}
+              <div className="space-y-2">
+                <Label htmlFor="create-complaint">Motivo de Consulta <span className="text-destructive">*</span></Label>
+                <Textarea
+                  id="create-complaint"
+                  placeholder="Describe el motivo de consulta del paciente..."
+                  value={createForm.chief_complaint}
+                  onChange={e => setCreateForm(f => ({ ...f, chief_complaint: e.target.value }))}
+                  rows={3}
+                />
+              </div>
+
+              {/* Diagnóstico inicial */}
+              <div className="space-y-2">
+                <Label htmlFor="create-diagnosis">Diagnóstico Inicial</Label>
+                <Input
+                  id="create-diagnosis"
+                  placeholder="Diagnóstico presuntivo..."
+                  value={createForm.initial_diagnosis ?? ""}
+                  onChange={e => setCreateForm(f => ({ ...f, initial_diagnosis: e.target.value }))}
+                />
+              </div>
+
+              {/* Turno */}
+              <div className="space-y-2">
+                <Label>Turno</Label>
+                <Select
+                  value={createForm.shift_type ?? ShiftType.DAYTIME}
+                  onValueChange={v => setCreateForm(f => ({ ...f, shift_type: v as ShiftType }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ShiftType.DAYTIME}>Turno Diurno</SelectItem>
+                    <SelectItem value={ShiftType.NIGHTTIME}>Turno Nocturno</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Es transferencia */}
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <div>
+                  <Label className="font-medium">Transferencia</Label>
+                  <p className="text-xs text-muted-foreground">¿Este caso es una transferencia de otro expediente?</p>
                 </div>
+                <Select
+                  value={createForm.is_transfer ? "yes" : "no"}
+                  onValueChange={v => setCreateForm(f => ({ ...f, is_transfer: v === "yes" }))}
+                >
+                  <SelectTrigger className="w-24">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="no">No</SelectItem>
+                    <SelectItem value="yes">Sí</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsTransferDialogOpen(false)}>
-                    Cancelar
-                  </Button>
-                  <Button onClick={handleSubmitTransfer}>
-                    <ArrowRightLeft className="mr-2 h-4 w-4" />
-                    Confirmar Transferencia
-                  </Button>
-                </DialogFooter>
-              </>
-            )}
-          </DialogContent>
-        </Dialog>
+              {/* Notas */}
+              <div className="space-y-2">
+                <Label htmlFor="create-notes">Notas Adicionales</Label>
+                <Textarea
+                  id="create-notes"
+                  placeholder="Observaciones adicionales..."
+                  value={createForm.notes ?? ""}
+                  onChange={e => setCreateForm(f => ({ ...f, notes: e.target.value }))}
+                  rows={2}
+                />
+              </div>
+            </div>
+          </ScrollArea>
 
-        {/* Dialog para Cerrar Expediente */}
-        <Dialog open={isCloseDialogOpen} onOpenChange={setIsCloseDialogOpen}>
-          <DialogContent className="max-w-md">
-            {selectedCase && (
-              <>
-                <DialogHeader>
-                  <DialogTitle>Cerrar Expediente</DialogTitle>
-                  <CardDescription className="pt-2">
-                    Caso: <span className="font-mono">{selectedCase.case_number}</span>
-                  </CardDescription>
-                </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateOpen(false)} disabled={isSubmitting}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSubmitCreate}
+              disabled={isSubmitting || !createForm.patient_id || !createForm.admission_type_id || !createForm.chief_complaint}
+            >
+              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+              Crear Expediente
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-                <div className="space-y-6 py-4">
-                  <Alert variant={mockClosability.allowed ? "default" : "destructive"}>
-                    {mockClosability.allowed ? (
-                      <CheckCircle className="h-4 w-4" />
-                    ) : (
-                      <XCircle className="h-4 w-4" />
-                    )}
-                    <AlertTitle>
-                      {mockClosability.allowed ? "Expediente Cerrable" : "Expediente No Cerrable"}
-                    </AlertTitle>
-                    <AlertDescription>
-                      {mockClosability.allowed
-                        ? "Este expediente cumple con todos los requisitos para ser cerrado."
-                        : "Este expediente tiene requisitos pendientes que deben completarse antes de cerrar."}
-                    </AlertDescription>
-                  </Alert>
+      {/* ══════════════════════════════════════════════════════════════════════
+          Dialog: EDITAR EXPEDIENTE
+      ═══════════════════════════════════════════════════════════════════════ */}
+      <Dialog open={isEditOpen} onOpenChange={open => { if (!isSubmitting) setIsEditOpen(open) }}>
+        <DialogContent className="max-w-lg">
+          {selectedCase && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Editar Expediente</DialogTitle>
+                <CardDescription>
+                  <span className="font-mono">{selectedCase.case_number}</span>
+                  {" · "}{selectedCase.patient_name}
+                </CardDescription>
+              </DialogHeader>
 
-                  <div className="space-y-4">
-                    <div className="p-4 border rounded-lg">
-                      <div className="text-sm text-muted-foreground mb-2">Resumen del Caso</div>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-initial-diag">Diagnóstico Inicial</Label>
+                  <Input
+                    id="edit-initial-diag"
+                    value={editForm.initial_diagnosis ?? ""}
+                    onChange={e => setEditForm(f => ({ ...f, initial_diagnosis: e.target.value }))}
+                    placeholder="Diagnóstico inicial..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-final-diag">Diagnóstico Final</Label>
+                  <Input
+                    id="edit-final-diag"
+                    value={editForm.final_diagnosis ?? ""}
+                    onChange={e => setEditForm(f => ({ ...f, final_diagnosis: e.target.value }))}
+                    placeholder="Diagnóstico final..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-notes">Notas</Label>
+                  <Textarea
+                    id="edit-notes"
+                    value={editForm.notes ?? ""}
+                    onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))}
+                    placeholder="Observaciones del expediente..."
+                    rows={3}
+                  />
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsEditOpen(false)} disabled={isSubmitting}>Cancelar</Button>
+                <Button onClick={handleSubmitEdit} disabled={isSubmitting}>
+                  {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Edit className="mr-2 h-4 w-4" />}
+                  Guardar Cambios
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          Dialog: TRANSFERIR CASO
+      ═══════════════════════════════════════════════════════════════════════ */}
+      <Dialog open={isTransferOpen} onOpenChange={open => { if (!isSubmitting) setIsTransferOpen(open) }}>
+        <DialogContent className="max-w-md">
+          {selectedCase && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Transferir Expediente</DialogTitle>
+                <CardDescription>
+                  <span className="font-mono">{selectedCase.case_number}</span>
+                  {" · "}{selectedCase.patient_name}
+                </CardDescription>
+              </DialogHeader>
+
+              <div className="space-y-4 py-4">
+                {isDialogLoading ? (
+                  <div className="flex items-center justify-center py-8 gap-3 text-muted-foreground">
+                    <Loader2 className="h-5 w-5 animate-spin" />Verificando transferibilidad...
+                  </div>
+                ) : transferability ? (
+                  <>
+                    <Alert className={transferability.allowed ? "bg-success/10 border-success/30" : "bg-destructive/10 border-destructive/30"}>
+                      {transferability.allowed
+                        ? <CheckCircle className="h-4 w-4 text-success" />
+                        : <XCircle className="h-4 w-4 text-destructive" />}
+                      <AlertTitle>
+                        {transferability.allowed ? "Transferencia Permitida" : "Transferencia No Permitida"}
+                      </AlertTitle>
+                      {transferability.reason && (
+                        <AlertDescription>{transferability.reason}</AlertDescription>
+                      )}
+                    </Alert>
+
+                    {transferability.allowed && (
                       <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <span>Paciente:</span>
-                          <span className="font-medium">{selectedCase.patient_name}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Diagnóstico:</span>
-                          <span className="font-medium">{selectedCase.diagnosis}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Total Facturado:</span>
-                          <span className="font-medium">{formatCurrency(selectedCase.total_cost)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Saldo Pendiente:</span>
-                          <span className={`font-medium ${selectedCase.balance > 0 ? "text-destructive" : "text-success"}`}>
-                            {formatCurrency(selectedCase.balance)}
-                          </span>
-                        </div>
+                        <Label htmlFor="transfer-notes">Notas de Transferencia</Label>
+                        <Textarea
+                          id="transfer-notes"
+                          placeholder="Motivo y observaciones de la transferencia..."
+                          value={transferNotes}
+                          onChange={e => setTransferNotes(e.target.value)}
+                          rows={3}
+                        />
                       </div>
-                    </div>
+                    )}
+                  </>
+                ) : (
+                  <Alert>
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>No se pudo verificar</AlertTitle>
+                    <AlertDescription>No fue posible verificar la transferibilidad del expediente.</AlertDescription>
+                  </Alert>
+                )}
+              </div>
 
-                    {mockClosability.allowed && (
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsTransferOpen(false)} disabled={isSubmitting}>Cancelar</Button>
+                {transferability?.allowed && (
+                  <Button onClick={handleSubmitTransfer} disabled={isSubmitting}>
+                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowRightLeft className="mr-2 h-4 w-4" />}
+                    Confirmar Traslado
+                  </Button>
+                )}
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          Dialog: CERRAR CASO
+      ═══════════════════════════════════════════════════════════════════════ */}
+      <Dialog open={isCloseOpen} onOpenChange={open => { if (!isSubmitting) setIsCloseOpen(open) }}>
+        <DialogContent className="max-w-md">
+          {selectedCase && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Cerrar Expediente</DialogTitle>
+                <CardDescription>
+                  <span className="font-mono">{selectedCase.case_number}</span>
+                  {" · "}{selectedCase.patient_name}
+                </CardDescription>
+              </DialogHeader>
+
+              <div className="space-y-4 py-4">
+                {isDialogLoading ? (
+                  <div className="flex items-center justify-center py-8 gap-3 text-muted-foreground">
+                    <Loader2 className="h-5 w-5 animate-spin" />Verificando condiciones de cierre...
+                  </div>
+                ) : closability ? (
+                  <>
+                    <Alert className={closability.allowed ? "bg-success/10 border-success/30" : "bg-destructive/10 border-destructive/30"}>
+                      {closability.allowed
+                        ? <CheckCircle className="h-4 w-4 text-success" />
+                        : <XCircle className="h-4 w-4 text-destructive" />}
+                      <AlertTitle>
+                        {closability.allowed ? "Expediente Cerrable" : "No Se Puede Cerrar"}
+                      </AlertTitle>
+                      <AlertDescription>
+                        {closability.allowed
+                          ? "Cumple todos los requisitos para proceder con el alta."
+                          : closability.reason ?? "Hay requisitos pendientes antes de cerrar el expediente."}
+                      </AlertDescription>
+                    </Alert>
+
+                    {closability.allowed && (
                       <>
-                        <div className="space-y-2">
-                          <Label htmlFor="close_notes">Notas de Cierre</Label>
-                          <Textarea
-                            id="close_notes"
-                            placeholder="Agregar observaciones sobre el cierre del expediente..."
-                            rows={3}
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            Ej: "Paciente dado de alta con recuperación completa. Se programó cita de seguimiento."
-                          </p>
+                        <div className="rounded-lg border p-3 space-y-2 text-sm">
+                          <p className="font-medium">Resumen del Caso</p>
+                          <div className="flex justify-between text-muted-foreground">
+                            <span>Paciente:</span>
+                            <span className="font-medium text-foreground">{selectedCase.patient_name}</span>
+                          </div>
+                          {selectedCase.total_cost != null && (
+                            <div className="flex justify-between text-muted-foreground">
+                              <span>Total Facturado:</span>
+                              <span className="font-medium text-foreground">{formatCurrency(selectedCase.total_cost)}</span>
+                            </div>
+                          )}
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="final_diagnosis">Diagnóstico Final</Label>
+                          <Label htmlFor="close-final-diag">Diagnóstico Final</Label>
                           <Input
-                            id="final_diagnosis"
-                            placeholder="Diagnóstico al momento del alta"
-                            defaultValue={selectedCase.diagnosis}
+                            id="close-final-diag"
+                            placeholder="Diagnóstico al momento del alta..."
+                            value={finalDiagnosis}
+                            onChange={e => setFinalDiagnosis(e.target.value)}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="close-notes">Notas de Cierre</Label>
+                          <Textarea
+                            id="close-notes"
+                            placeholder="Observaciones del alta médica..."
+                            value={closeNotes}
+                            onChange={e => setCloseNotes(e.target.value)}
+                            rows={3}
                           />
                         </div>
 
                         <Alert>
                           <AlertTriangle className="h-4 w-4" />
-                          <AlertTitle>Atención</AlertTitle>
+                          <AlertTitle>Acción Irreversible</AlertTitle>
                           <AlertDescription className="text-sm">
-                            Esta acción no se puede deshacer. El expediente será archivado y marcado como cerrado.
+                            El expediente será marcado como cerrado y no podrá reactivarse sin autorización.
                           </AlertDescription>
                         </Alert>
                       </>
                     )}
-                  </div>
-                </div>
+                  </>
+                ) : (
+                  <Alert>
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>No se pudo verificar</AlertTitle>
+                    <AlertDescription>No fue posible verificar las condiciones de cierre.</AlertDescription>
+                  </Alert>
+                )}
+              </div>
 
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsCloseDialogOpen(false)}>
-                    Cancelar
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsCloseOpen(false)} disabled={isSubmitting}>Cancelar</Button>
+                {closability?.allowed && (
+                  <Button onClick={handleSubmitClose} disabled={isSubmitting}>
+                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
+                    Confirmar Alta
                   </Button>
-                  {mockClosability.allowed && (
-                    <Button onClick={handleSubmitClose}>
-                      <CheckCircle className="mr-2 h-4 w-4" />
-                      Confirmar Cierre
-                    </Button>
-                  )}
-                </DialogFooter>
-              </>
-            )}
-          </DialogContent>
-        </Dialog>
-      </div>
+                )}
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   )
 }

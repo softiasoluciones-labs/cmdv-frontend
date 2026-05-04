@@ -12,3 +12,4 @@ export { supplierService } from "./inventory-services/supplierService";
 export { warehouseService } from "./inventory-services/warehouseService";
 
 export { patientService } from "./medical-services/patientService";
+export { caseFileService } from "./medical-services/caseFileService";
