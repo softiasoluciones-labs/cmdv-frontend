@@ -161,7 +161,6 @@ export default function SystemParametersPage() {
   }
 
   const saveCategory = (category: keyof typeof globalParameters) => {
-    console.log(`Guardando cambios de ${category}:`, globalParameters[category])
     // Aquí iría la lógica para guardar en el backend
   }
 

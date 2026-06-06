@@ -84,9 +84,8 @@ export const useSuppliers = (
             setState((prev) => ({ ...prev, loading: true, error: null }));
             try {
                 const response = await supplierService.createSupplier(supplierData);
-                console.log("Create supplier response:", response);
                 const created = response.data;
-            
+
                 setState((prev) => ({
                     ...prev,
                     suppliers: [...prev.suppliers, created],

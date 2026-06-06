@@ -191,7 +191,6 @@ function PaymentForm({ onClose }: { onClose: () => void }) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("Saving payment:", formData)
     onClose()
   }
 

@@ -357,13 +357,11 @@ export default function OperationsPage() {
     }
 
     const handleSaveOperation = () => {
-        console.log("Guardando operación:", operationForm)
         setIsOperationDialogOpen(false)
         setSelectedOperation(null)
     }
 
     const handleSaveRecord = () => {
-        console.log("Guardando registro:", recordForm)
         setIsRecordDialogOpen(false)
         setSelectedOperation(null)
     }
@@ -1132,7 +1130,6 @@ export default function OperationsPage() {
                                                     Cancelar
                                                 </Button>
                                                 <Button onClick={() => {
-                                                    console.log("Guardando tipo de operación:", selectedOperationType)
                                                     setIsTypeDialogOpen(false)
                                                 }}>
                                                     {selectedOperationType ? "Actualizar Tipo" : "Crear Tipo"}

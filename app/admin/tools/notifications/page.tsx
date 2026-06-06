@@ -373,7 +373,6 @@ export default function NotificationsPage() {
     }
 
     const handleCreateReminder = () => {
-        console.log("Creando recordatorio:", newReminder)
         // Aquí iría la lógica para guardar en el backend
     }
 

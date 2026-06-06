@@ -212,7 +212,6 @@ export default function ContactsPage() {
     })
 
     const handleCreateContact = () => {
-        console.log("Creando contacto:", newContact)
         // Aquí iría la lógica para guardar en el backend
     }
 

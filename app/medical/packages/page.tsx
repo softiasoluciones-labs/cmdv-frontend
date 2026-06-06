@@ -210,7 +210,6 @@ export default function PackagesPage() {
 
   const handleSavePackage = async () => {
     // Aquí llamar al servicio create/update
-    console.log("Guardando paquete:", packageForm);
     setIsPackageDialogOpen(false);
     setSelectedPackage(null);
     setPackageForm({
@@ -227,7 +226,6 @@ export default function PackagesPage() {
   };
 
   const handleCopyPackageSubmit = async () => {
-    console.log("Copiando paquete:", selectedPackageForCopy, "con:", copyForm);
     setIsCopyDialogOpen(false);
     setSelectedPackageForCopy(null);
     await fetchPackages();
@@ -407,11 +405,10 @@ export default function PackagesPage() {
                       <Label>Tipo de Médico *</Label>
                       <div className="grid grid-cols-2 gap-4">
                         <div
-                          className={`flex items-center space-x-2 p-4 border rounded-lg cursor-pointer ${
-                            packageForm.doctor_type === "internal"
-                              ? "border-primary bg-primary/5"
-                              : "border-muted"
-                          }`}
+                          className={`flex items-center space-x-2 p-4 border rounded-lg cursor-pointer ${packageForm.doctor_type === "internal"
+                            ? "border-primary bg-primary/5"
+                            : "border-muted"
+                            }`}
                           onClick={() =>
                             setPackageForm({
                               ...packageForm,
@@ -431,11 +428,10 @@ export default function PackagesPage() {
                           )}
                         </div>
                         <div
-                          className={`flex items-center space-x-2 p-4 border rounded-lg cursor-pointer ${
-                            packageForm.doctor_type === "external"
-                              ? "border-primary bg-primary/5"
-                              : "border-muted"
-                          }`}
+                          className={`flex items-center space-x-2 p-4 border rounded-lg cursor-pointer ${packageForm.doctor_type === "external"
+                            ? "border-primary bg-primary/5"
+                            : "border-muted"
+                            }`}
                           onClick={() =>
                             setPackageForm({
                               ...packageForm,
@@ -1105,7 +1101,7 @@ export default function PackagesPage() {
                             getPackagePrice(selectedPackageForCopy) *
                             (1 +
                               parseFloat(copyForm.price_increase_percentage) /
-                                100)
+                              100)
                           ).toFixed(2)}
                         </div>
                       </CardContent>

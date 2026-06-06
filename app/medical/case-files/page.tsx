@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -25,13 +26,11 @@ import {
   TrendingUp, MoreVertical, FilePlus, Shield, Heart, Loader2, Package,
 } from "lucide-react"
 import { useCaseFile } from "@/hooks/medical-hooks/use-casefile"
-import { usePatients } from "@/hooks/medical-hooks/use-patients"
 import {
   CaseFileListResponse,
   CaseValidationResponse,
   ClosabilityResponse,
   TransferabilityResponse,
-  CreateCaseFileRequest,
   UpdateCaseFileRequest,
   ShiftType,
   CaseStatus,
@@ -47,9 +46,9 @@ const statusFlowConfig: Record<string, { label: string; color: string; icon: Rea
   [CaseStatusFlow.C2_CANCELACION]:          { label: "Cancelado",       color: "bg-red-100 text-red-800",      icon: XCircle },
   [CaseStatusFlow.C3_CERRADO]:              { label: "Cerrado",         color: "bg-teal-100 text-teal-800",    icon: CheckCircle },
   [CaseStatusFlow.CE_CARGOS_EXPEDIENTE]:    { label: "Cargos",          color: "bg-blue-100 text-blue-800",    icon: DollarSign },
-  [CaseStatusFlow.CC_CONFIRMACION_CARGOS]:  { label: "Confirmación",    color: "bg-purple-100 text-purple-800",icon: ClipboardCheck },
-  [CaseStatusFlow.TR_TRASLADO_PROCEDIMIENTO]:{ label: "Traslado",       color: "bg-orange-100 text-orange-800",icon: ArrowRightLeft },
-  [CaseStatusFlow.RA_REAPERTURA]:           { label: "Reapertura",      color: "bg-yellow-100 text-yellow-800",icon: RefreshCw },
+  [CaseStatusFlow.CC_CONFIRMACION_CARGOS]:  { label: "Confirmación",    color: "bg-purple-100 text-purple-800", icon: ClipboardCheck },
+  [CaseStatusFlow.TR_TRASLADO_PROCEDIMIENTO]:{ label: "Traslado",       color: "bg-orange-100 text-orange-800", icon: ArrowRightLeft },
+  [CaseStatusFlow.RA_REAPERTURA]:           { label: "Reapertura",      color: "bg-yellow-100 text-yellow-800", icon: RefreshCw },
   [CaseStatusFlow.EX_EXTORNO]:              { label: "Extorno",         color: "bg-pink-100 text-pink-800",    icon: Activity },
 }
 
@@ -69,56 +68,42 @@ const ACTIVE_STATUSES = new Set<CaseStatus>([
   CaseStatus.SURGERY_SCHEDULED, CaseStatus.RECOVERING,
 ])
 
-const EMPTY_CREATE_FORM: CreateCaseFileRequest = {
-  patient_id: "",
-  admission_type_id: "",
-  chief_complaint: "",
-  initial_diagnosis: "",
-  shift_type: ShiftType.DAYTIME,
-  notes: "",
-}
-
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function CaseFilesPage() {
+  const router = useRouter()
   const {
     caseFiles, selectedCaseFile, pagination, isLoading, error,
     fetchCaseFiles, fetchCaseFileById,
-    createCaseFile, updateCaseFile, updateCaseStatus,
+    updateCaseFile, updateCaseStatus,
     validateCaseFile, canTransferCase, canCloseCase,
     clearError,
   } = useCaseFile()
 
-  const { patients } = usePatients({ limit: 200 })
+// ── UI state ───────────────────────────────────────────────────────────────
+const [search, setSearch] = useState("")
+const [statusFilter, setStatusFilter] = useState("all")
+const [admissionTypeFilter, setAdmissionTypeFilter] = useState("all")
+const [activeTab, setActiveTab] = useState("list")
 
-  // ── UI state ───────────────────────────────────────────────────────────────
-  const [search, setSearch] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [admissionTypeFilter, setAdmissionTypeFilter] = useState("all")
-  const [activeTab, setActiveTab] = useState("list")
+const [selectedCase, setSelectedCase] = useState<CaseFileListResponse | null>(null)
 
-  const [selectedCase, setSelectedCase] = useState<CaseFileListResponse | null>(null)
+const [isDetailOpen, setIsDetailOpen] = useState(false)
+const [isEditOpen, setIsEditOpen] = useState(false)
+const [isTransferOpen, setIsTransferOpen] = useState(false)
+const [isCloseOpen, setIsCloseOpen] = useState(false)
 
-  const [isDetailOpen, setIsDetailOpen] = useState(false)
-  const [isCreateOpen, setIsCreateOpen] = useState(false)
-  const [isEditOpen, setIsEditOpen] = useState(false)
-  const [isTransferOpen, setIsTransferOpen] = useState(false)
-  const [isCloseOpen, setIsCloseOpen] = useState(false)
+const [validation, setValidation] = useState<CaseValidationResponse | null>(null)
+const [closability, setClosability] = useState<ClosabilityResponse | null>(null)
+const [transferability, setTransferability] = useState<TransferabilityResponse | null>(null)
+const [isDialogLoading, setIsDialogLoading] = useState(false)
+const [isSubmitting, setIsSubmitting] = useState(false)
+const [editForm, setEditForm] = useState<UpdateCaseFileRequest>({})
+const [transferNotes, setTransferNotes] = useState("")
+const [closeNotes, setCloseNotes] = useState("")
+const [finalDiagnosis, setFinalDiagnosis] = useState("")
 
-  const [validation, setValidation] = useState<CaseValidationResponse | null>(null)
-  const [closability, setClosability] = useState<ClosabilityResponse | null>(null)
-  const [transferability, setTransferability] = useState<TransferabilityResponse | null>(null)
-  const [isDialogLoading, setIsDialogLoading] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-
-  // ── Forms ──────────────────────────────────────────────────────────────────
-  const [createForm, setCreateForm] = useState<CreateCaseFileRequest>(EMPTY_CREATE_FORM)
-  const [editForm, setEditForm] = useState<UpdateCaseFileRequest>({})
-  const [transferNotes, setTransferNotes] = useState("")
-  const [closeNotes, setCloseNotes] = useState("")
-  const [finalDiagnosis, setFinalDiagnosis] = useState("")
-
-  // ── Server-side status filter ──────────────────────────────────────────────
+// ── Server-side status filter ──────────────────────────────────────────────
   const handleStatusFilterChange = (value: string) => {
     setStatusFilter(value)
     const params: CaseFileQueryParams = {}
@@ -143,10 +128,10 @@ export default function CaseFilesPage() {
 
   // ── Stats ──────────────────────────────────────────────────────────────────
   const stats = useMemo(() => {
-    const active      = caseFiles.filter(c => ACTIVE_STATUSES.has(c.case_status as CaseStatus))
+    const active = caseFiles.filter(c => ACTIVE_STATUSES.has(c.case_status as CaseStatus))
     const hospitalized = caseFiles.filter(c => c.case_status === CaseStatus.HOSPITALIZED)
-    const discharged  = caseFiles.filter(c => c.case_status === CaseStatus.DISCHARGED)
-    const totalCost   = caseFiles.reduce((s, c) => s + (c.total_cost ?? 0), 0)
+    const discharged = caseFiles.filter(c => c.case_status === CaseStatus.DISCHARGED)
+    const totalCost = caseFiles.reduce((s, c) => s + (c.total_cost ?? 0), 0)
     return { active: active.length, hospitalized: hospitalized.length, discharged: discharged.length, totalCost }
   }, [caseFiles])
 
@@ -169,8 +154,8 @@ export default function CaseFilesPage() {
     setSelectedCase(row)
     setEditForm({
       initial_diagnosis: selectedCaseFile?.initial_diagnosis ?? "",
-      final_diagnosis:   selectedCaseFile?.final_diagnosis   ?? "",
-      notes:             selectedCaseFile?.notes              ?? "",
+      final_diagnosis: selectedCaseFile?.final_diagnosis ?? "",
+      notes: selectedCaseFile?.notes ?? "",
     })
     setIsEditOpen(true)
   }
@@ -185,30 +170,18 @@ export default function CaseFilesPage() {
     setIsTransferOpen(true)
   }
 
-  const handleCloseCase = async (row: CaseFileListResponse) => {
-    setSelectedCase(row)
-    setCloseNotes("")
-    setFinalDiagnosis("")
-    setIsDialogLoading(true)
-    const result = await canCloseCase(row.id)
-    setClosability(result)
-    setIsDialogLoading(false)
-    setIsCloseOpen(true)
-  }
+const handleCloseCase = async (row: CaseFileListResponse) => {
+  setSelectedCase(row)
+  setCloseNotes("")
+  setFinalDiagnosis("")
+  setIsDialogLoading(true)
+  const result = await canCloseCase(row.id)
+  setClosability(result)
+  setIsDialogLoading(false)
+  setIsCloseOpen(true)
+}
 
-  const handleSubmitCreate = async () => {
-    if (!createForm.patient_id || !createForm.admission_type_id || !createForm.chief_complaint) return
-    setIsSubmitting(true)
-    try {
-      await createCaseFile(createForm)
-      setIsCreateOpen(false)
-      setCreateForm(EMPTY_CREATE_FORM)
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  const handleSubmitEdit = async () => {
+const handleSubmitEdit = async () => {
     if (!selectedCase) return
     setIsSubmitting(true)
     try {
@@ -284,22 +257,22 @@ export default function CaseFilesPage() {
             <h1 className="text-2xl font-bold tracking-tight">Expedientes Médicos</h1>
             <p className="text-muted-foreground">Gestión de casos y seguimiento de pacientes</p>
           </div>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setActiveTab(activeTab === "list" ? "analytics" : "list")}
-            >
-              {activeTab === "list" ? (
-                <><TrendingUp className="mr-2 h-4 w-4" />Análisis</>
-              ) : (
-                <><FileText className="mr-2 h-4 w-4" />Ver Lista</>
-              )}
-            </Button>
-            <Button onClick={() => setIsCreateOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Nuevo Expediente
-            </Button>
-          </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setActiveTab(activeTab === "list" ? "analytics" : "list")}
+          >
+            {activeTab === "list" ? (
+              <><TrendingUp className="mr-2 h-4 w-4" />Análisis</>
+            ) : (
+              <><FileText className="mr-2 h-4 w-4" />Ver Lista</>
+            )}
+          </Button>
+          <Button onClick={() => router.push("/medical/case-files/new-case-file")}>
+            <Plus className="mr-2 h-4 w-4" />
+            Nuevo Expediente
+          </Button>
+        </div>
         </div>
 
         {/* Error banner */}
@@ -317,10 +290,10 @@ export default function CaseFilesPage() {
         {/* Stats */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            { label: "Casos Activos",    value: stats.active,       sub: `${stats.hospitalized} hospitalizados`, icon: FileText,      iconColor: "text-primary",     bg: "bg-primary/10" },
-            { label: "En Hospitalización",value: stats.hospitalized, sub: "Pacientes ingresados",                  icon: BedDouble,     iconColor: "text-purple-600",  bg: "bg-purple-500/10" },
-            { label: "Altas Médicas",    value: stats.discharged,   sub: "Expedientes cerrados",                  icon: CheckCircle,   iconColor: "text-teal-600",    bg: "bg-teal-500/10" },
-            { label: "Total Facturado",  value: formatCurrency(stats.totalCost), sub: "Monto acumulado",           icon: DollarSign,    iconColor: "text-success",     bg: "bg-success/10", isText: true },
+            { label: "Casos Activos", value: stats.active, sub: `${stats.hospitalized} hospitalizados`, icon: FileText, iconColor: "text-primary", bg: "bg-primary/10" },
+            { label: "En Hospitalización", value: stats.hospitalized, sub: "Pacientes ingresados", icon: BedDouble, iconColor: "text-purple-600", bg: "bg-purple-500/10" },
+            { label: "Altas Médicas", value: stats.discharged, sub: "Expedientes cerrados", icon: CheckCircle, iconColor: "text-teal-600", bg: "bg-teal-500/10" },
+            { label: "Total Facturado", value: formatCurrency(stats.totalCost), sub: "Monto acumulado", icon: DollarSign, iconColor: "text-success", bg: "bg-success/10", isText: true },
           ].map(({ label, value, sub, icon: Icon, iconColor, bg, isText }) => (
             <Card key={label}>
               <CardContent className="flex items-center gap-4 p-4">
@@ -691,7 +664,7 @@ export default function CaseFilesPage() {
         </Tabs>
       </div>
 
-      {/* ══════════════════════════════════════════════════════════════════════
+      {/* ═══════════════════════════════════════════════════════════════════════
           Dialog: VER DETALLE
       ═══════════════════════════════════════════════════════════════════════ */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
@@ -1062,141 +1035,9 @@ export default function CaseFilesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ══════════════════════════════════════════════════════════════════════
-          Dialog: CREAR EXPEDIENTE
-      ═══════════════════════════════════════════════════════════════════════ */}
-      <Dialog open={isCreateOpen} onOpenChange={open => { if (!isSubmitting) { setIsCreateOpen(open); if (!open) setCreateForm(EMPTY_CREATE_FORM) } }}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Nuevo Expediente Médico</DialogTitle>
-            <CardDescription>Complete los datos para crear el expediente</CardDescription>
-          </DialogHeader>
 
-          <ScrollArea className="max-h-[60vh] pr-4">
-            <div className="space-y-4 py-2">
-              {/* Paciente */}
-              <div className="space-y-2">
-                <Label htmlFor="create-patient">Paciente <span className="text-destructive">*</span></Label>
-                <Select
-                  value={createForm.patient_id}
-                  onValueChange={v => setCreateForm(f => ({ ...f, patient_id: v }))}
-                >
-                  <SelectTrigger id="create-patient">
-                    <SelectValue placeholder="Seleccionar paciente..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {patients.map(p => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.fullName || `${p.firstName} ${p.lastName}`}
-                        {p.fileNumber && <span className="text-muted-foreground ml-2 text-xs">({p.fileNumber})</span>}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
 
-              {/* Tipo de ingreso */}
-              <div className="space-y-2">
-                <Label htmlFor="create-admission-type">Tipo de Ingreso <span className="text-destructive">*</span></Label>
-                <Input
-                  id="create-admission-type"
-                  placeholder="ID del tipo de ingreso"
-                  value={createForm.admission_type_id}
-                  onChange={e => setCreateForm(f => ({ ...f, admission_type_id: e.target.value }))}
-                />
-                <p className="text-xs text-muted-foreground">Ingresa el ID del tipo de admisión configurado en el sistema</p>
-              </div>
-
-              {/* Motivo de consulta */}
-              <div className="space-y-2">
-                <Label htmlFor="create-complaint">Motivo de Consulta <span className="text-destructive">*</span></Label>
-                <Textarea
-                  id="create-complaint"
-                  placeholder="Describe el motivo de consulta del paciente..."
-                  value={createForm.chief_complaint}
-                  onChange={e => setCreateForm(f => ({ ...f, chief_complaint: e.target.value }))}
-                  rows={3}
-                />
-              </div>
-
-              {/* Diagnóstico inicial */}
-              <div className="space-y-2">
-                <Label htmlFor="create-diagnosis">Diagnóstico Inicial</Label>
-                <Input
-                  id="create-diagnosis"
-                  placeholder="Diagnóstico presuntivo..."
-                  value={createForm.initial_diagnosis ?? ""}
-                  onChange={e => setCreateForm(f => ({ ...f, initial_diagnosis: e.target.value }))}
-                />
-              </div>
-
-              {/* Turno */}
-              <div className="space-y-2">
-                <Label>Turno</Label>
-                <Select
-                  value={createForm.shift_type ?? ShiftType.DAYTIME}
-                  onValueChange={v => setCreateForm(f => ({ ...f, shift_type: v as ShiftType }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ShiftType.DAYTIME}>Turno Diurno</SelectItem>
-                    <SelectItem value={ShiftType.NIGHTTIME}>Turno Nocturno</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Es transferencia */}
-              <div className="flex items-center justify-between rounded-lg border p-3">
-                <div>
-                  <Label className="font-medium">Transferencia</Label>
-                  <p className="text-xs text-muted-foreground">¿Este caso es una transferencia de otro expediente?</p>
-                </div>
-                <Select
-                  value={createForm.is_transfer ? "yes" : "no"}
-                  onValueChange={v => setCreateForm(f => ({ ...f, is_transfer: v === "yes" }))}
-                >
-                  <SelectTrigger className="w-24">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="no">No</SelectItem>
-                    <SelectItem value="yes">Sí</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Notas */}
-              <div className="space-y-2">
-                <Label htmlFor="create-notes">Notas Adicionales</Label>
-                <Textarea
-                  id="create-notes"
-                  placeholder="Observaciones adicionales..."
-                  value={createForm.notes ?? ""}
-                  onChange={e => setCreateForm(f => ({ ...f, notes: e.target.value }))}
-                  rows={2}
-                />
-              </div>
-            </div>
-          </ScrollArea>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCreateOpen(false)} disabled={isSubmitting}>
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleSubmitCreate}
-              disabled={isSubmitting || !createForm.patient_id || !createForm.admission_type_id || !createForm.chief_complaint}
-            >
-              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
-              Crear Expediente
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ══════════════════════════════════════════════════════════════════════
+      {/* ═══════════════════════════════════════════════════════════════════════
           Dialog: EDITAR EXPEDIENTE
       ═══════════════════════════════════════════════════════════════════════ */}
       <Dialog open={isEditOpen} onOpenChange={open => { if (!isSubmitting) setIsEditOpen(open) }}>
@@ -1254,7 +1095,7 @@ export default function CaseFilesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ══════════════════════════════════════════════════════════════════════
+      {/* ═══════════════════════════════════════════════════════════════════════
           Dialog: TRANSFERIR CASO
       ═══════════════════════════════════════════════════════════════════════ */}
       <Dialog open={isTransferOpen} onOpenChange={open => { if (!isSubmitting) setIsTransferOpen(open) }}>
@@ -1324,7 +1165,7 @@ export default function CaseFilesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ══════════════════════════════════════════════════════════════════════
+      {/* ═══════════════════════════════════════════════════════════════════════
           Dialog: CERRAR CASO
       ═══════════════════════════════════════════════════════════════════════ */}
       <Dialog open={isCloseOpen} onOpenChange={open => { if (!isSubmitting) setIsCloseOpen(open) }}>

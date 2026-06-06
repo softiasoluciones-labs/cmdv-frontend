@@ -66,7 +66,6 @@ export default function ReportsPage() {
   const [format, setFormat] = useState("pdf")
 
   const handleGenerateReport = (reportId: string) => {
-    console.log("Generating report:", reportId, dateRange, format)
     // In a real app, this would generate and download the report
   }
 

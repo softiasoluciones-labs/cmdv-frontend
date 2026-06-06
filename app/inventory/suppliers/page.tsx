@@ -218,7 +218,6 @@ export default function SuppliersPage() {
       } else {
         const payload = { ...values, id: "" } as editSupplierData;
         const created = await createSupplier(payload);
-        console.log("Create supplier response:", created);
         if (created) {
           toast.success("Proveedor creado exitosamente");
           setFormOpen(false);
