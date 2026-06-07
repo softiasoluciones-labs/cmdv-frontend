@@ -29,7 +29,9 @@ interface UseUsersState {
 interface UseUsersReturn extends UseUsersState {
     fetchUsers: (params?: UsersQueryParams) => Promise<void>;
     refetch: () => Promise<void>;
-    deleteUser: (id: string) => Promise<boolean>;
+    blockUser: (id: string) => Promise<boolean>;
+    unblockUser: (id: string) => Promise<boolean>;
+    deactivateUser: (id: string) => Promise<boolean>;
 }
 
 const initialStats: UsersStats = {
@@ -98,17 +100,53 @@ export function useUsers(initialParams: UsersQueryParams = {}): UseUsersReturn {
         await fetchUsers(currentParams);
     }, [fetchUsers, currentParams]);
 
-    const deleteUser = useCallback(
+    const blockUser = useCallback(
         async (id: string): Promise<boolean> => {
             try {
-                await userService.deleteUser(id);
+                await userService.blockUser(id);
                 await refetch();
                 return true;
             } catch (error) {
                 const errorMessage =
                     error instanceof ApiError
                         ? error.message
-                        : "Error al eliminar el usuario";
+                        : "Error al bloquear el usuario";
+                setState((prev) => ({ ...prev, error: errorMessage }));
+                return false;
+            }
+        },
+        [refetch]
+    );
+
+    const unblockUser = useCallback(
+        async (id: string): Promise<boolean> => {
+            try {
+                await userService.unblockUser(id);
+                await refetch();
+                return true;
+            } catch (error) {
+                const errorMessage =
+                    error instanceof ApiError
+                        ? error.message
+                        : "Error al desbloquear el usuario";
+                setState((prev) => ({ ...prev, error: errorMessage }));
+                return false;
+            }
+        },
+        [refetch]
+    );
+
+    const deactivateUser = useCallback(
+        async (id: string): Promise<boolean> => {
+            try {
+                await userService.deactivateUser(id);
+                await refetch();
+                return true;
+            } catch (error) {
+                const errorMessage =
+                    error instanceof ApiError
+                        ? error.message
+                        : "Error al desactivar el usuario";
                 setState((prev) => ({ ...prev, error: errorMessage }));
                 return false;
             }
@@ -125,6 +163,8 @@ export function useUsers(initialParams: UsersQueryParams = {}): UseUsersReturn {
         ...state,
         fetchUsers,
         refetch,
-        deleteUser,
+        blockUser,
+        unblockUser,
+        deactivateUser,
     };
 }

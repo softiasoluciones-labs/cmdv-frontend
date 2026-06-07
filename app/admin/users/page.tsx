@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Search, Plus, Users, Shield, UserCheck, UserX, Edit, Trash2, Key, Loader2, AlertCircle, RefreshCw } from "lucide-react"
+import { Search, Plus, Users, Shield, UserCheck, UserX, Edit, Trash2, Lock, Unlock, Loader2, AlertCircle, RefreshCw } from "lucide-react"
 import { UserForm } from "@/components/admin/user-form"
 import { useUsers } from "@/hooks/core-hooks/use-users"
 import { ApiUser, UserRole, UsersQueryParams } from "@/lib/api"
@@ -36,9 +36,15 @@ export default function UsersPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [selectedUser, setSelectedUser] = useState<ApiUser | null>(null)
   const [showForm, setShowForm] = useState(false)
-  const [isDeleting, setIsDeleting] = useState<string | null>(null)
+  const [isDeactivating, setIsDeactivating] = useState<string | null>(null)
 
-  const { users, stats, isLoading, error, fetchUsers, refetch, deleteUser } = useUsers()
+  const { users, stats, isLoading, error, fetchUsers, refetch, blockUser, unblockUser, deactivateUser } = useUsers()
+
+  // Helper to check if a user is currently locked
+  const isUserLocked = useCallback((user: ApiUser) => {
+    if (!user.locked_until) return false
+    return new Date(user.locked_until) > new Date()
+  }, [])
 
   // Handle filter changes
   const handleFiltersChange = useCallback(() => {
@@ -66,13 +72,25 @@ export default function UsersPage() {
     })
   }, [users, search, roleFilter, statusFilter])
 
-  // Handle delete user
-  const handleDeleteUser = async (id: string) => {
-    if (!confirm("¿Estás seguro de que deseas eliminar este usuario?")) return
+  // Handle block/unblock toggle
+  const handleToggleBlock = async (user: ApiUser) => {
+    const locked = isUserLocked(user)
+    if (locked) {
+      if (!confirm(`¿Estás seguro de que deseas desbloquear al usuario ${user.full_name}?`)) return
+      await unblockUser(user.id)
+    } else {
+      if (!confirm(`¿Estás seguro de que deseas bloquear al usuario ${user.full_name}?`)) return
+      await blockUser(user.id)
+    }
+  }
 
-    setIsDeleting(id)
-    await deleteUser(id)
-    setIsDeleting(null)
+  // Handle deactivate user
+  const handleDeactivateUser = async (id: string) => {
+    if (!confirm("¿Estás seguro de que deseas desactivar este usuario?")) return
+
+    setIsDeactivating(id)
+    await deactivateUser(id)
+    setIsDeactivating(null)
   }
 
   // Handle form close
@@ -283,40 +301,67 @@ export default function UsersPage() {
                             {formatDate(user.created_at)}
                           </td>
                           <td className="py-3">
-                            <Badge variant={user.is_active ? "default" : "secondary"}>
-                              {user.is_active ? "Activo" : "Inactivo"}
-                            </Badge>
-                          </td>
-                          <td className="py-3">
-                            <div className="flex gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => {
-                                  setSelectedUser(user)
-                                  setShowForm(true)
-                                }}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button variant="ghost" size="icon">
-                                <Key className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-destructive"
-                                onClick={() => handleDeleteUser(user.id)}
-                                disabled={isDeleting === user.id}
-                              >
-                                {isDeleting === user.id ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <Trash2 className="h-4 w-4" />
-                                )}
-                              </Button>
-                            </div>
-                          </td>
+                             <div className="flex flex-col gap-1 items-start">
+                               <Badge variant={user.is_active ? "default" : "secondary"}>
+                                 {user.is_active ? "Activo" : "Inactivo"}
+                               </Badge>
+                               {isUserLocked(user) && (
+                                 <Badge variant="destructive" className="text-[10px] py-0 px-1.5 leading-none">
+                                   Bloqueado
+                                 </Badge>
+                               )}
+                             </div>
+                           </td>
+                           <td className="py-3">
+                             <div className="flex gap-1">
+                               <Button
+                                 variant="ghost"
+                                 size="icon"
+                                 onClick={() => {
+                                   setSelectedUser(user)
+                                   setShowForm(true)
+                                 }}
+                                 title="Editar usuario"
+                               >
+                                 <Edit className="h-4 w-4" />
+                               </Button>
+                               {isUserLocked(user) ? (
+                                 <Button
+                                   variant="ghost"
+                                   size="icon"
+                                   className="text-destructive hover:bg-destructive/10"
+                                   onClick={() => handleToggleBlock(user)}
+                                   title="Desbloquear usuario"
+                                 >
+                                   <Lock className="h-4 w-4 text-destructive" />
+                                 </Button>
+                               ) : (
+                                 <Button
+                                   variant="ghost"
+                                   size="icon"
+                                   className="text-muted-foreground hover:bg-muted"
+                                   onClick={() => handleToggleBlock(user)}
+                                   title="Bloquear usuario"
+                                 >
+                                   <Unlock className="h-4 w-4 text-muted-foreground" />
+                                 </Button>
+                               )}
+                               <Button
+                                 variant="ghost"
+                                 size="icon"
+                                 className="text-destructive hover:bg-destructive/10"
+                                 onClick={() => handleDeactivateUser(user.id)}
+                                 disabled={isDeactivating === user.id || !user.is_active}
+                                 title={user.is_active ? "Desactivar usuario" : "Usuario ya desactivado"}
+                               >
+                                 {isDeactivating === user.id ? (
+                                   <Loader2 className="h-4 w-4 animate-spin" />
+                                 ) : (
+                                   <Trash2 className="h-4 w-4" />
+                                 )}
+                               </Button>
+                             </div>
+                           </td>
                         </tr>
                       )
                     })}

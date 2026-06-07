@@ -82,4 +82,27 @@ export const userService = {
             { role }
         );
     },
+
+    /**
+     * Block user by role admin 
+     */
+    blockUser: async (id: string) => {
+        return api.post<ApiUser>(`${USERS_ENDPOINT}/${id}/lock`);
+    },
+
+    /**
+     * Unblock user by role admin
+     */
+    unblockUser: async (id: string) => {
+        return api.post<ApiUser>(`${USERS_ENDPOINT}/${id}/unlock`);
+    },
+
+    /**
+     * Deactivate user by role admin or superadmin
+     */
+    deactivateUser: async (id: string) => {
+        return api.patch<ApiUser>(`${USERS_ENDPOINT}/${id}/deactivate`);
+    },
+
+
 };

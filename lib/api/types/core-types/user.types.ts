@@ -69,6 +69,7 @@ export interface ApiUser {
     role: UserRole;
     is_active: boolean;
     failed_login_attempts: number;
+    locked_until?: string | null;
     created_at: string;
     updated_at: string;
     created_by: string;
