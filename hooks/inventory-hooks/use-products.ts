@@ -1,4 +1,4 @@
-"use-client";
+"use client";
 
 /**
  * use Products hook 
@@ -50,6 +50,7 @@ export function useProducts(initialParams: ProductsQueryParams = {}): UseProduct
         try {
             const response = await productService.getProducts(params);
             const data = response.data;
+            console.log(data);
 
             setState({
                 products: data.products || data.data || [],

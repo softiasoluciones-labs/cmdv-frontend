@@ -10,6 +10,7 @@ export { productService } from "./inventory-services/productService";
 export { purchaseOrderService } from "./inventory-services/purchaseOrderService";
 export { supplierService } from "./inventory-services/supplierService";
 export { warehouseService } from "./inventory-services/warehouseService";
+export { paymentSupplierService } from "./inventory-services/paymentSupplierService";
 
 export { patientService } from "./medical-services/patientService";
 export { caseFileService } from "./medical-services/caseFileService";

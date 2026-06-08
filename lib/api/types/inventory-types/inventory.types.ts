@@ -37,6 +37,10 @@ export interface Product {
     requiresRefrigeration: boolean;
     expirationAlertDays: number;
     isActive: boolean;
+    // Stock aggregado (calculado por el backend via subqueries)
+    totalStockQuantity?: number;
+    totalReservedQuantity?: number;
+    totalAvailableQuantity?: number;
     createdAt: string; // ISO date
     updatedAt: string; // ISO date
 }
@@ -189,6 +193,73 @@ export interface PurchaseOrdersQueryParams {
 
 export interface PaginatedPurchaseOrdersResponse {
     orders?: PurchaseOrder[];
+    total: number;
+    page: number;
+    limit: number;
+}
+
+/*****************************************************************/
+
+/**
+ * Payment Supplier interfaces
+ */
+
+export interface PaymentDetail {
+    id: string;
+    paymentMethod: string;
+    amount: number;
+    bank?: string;
+    referenceNumber?: string;
+    authorizationCode?: string;
+}
+
+export interface Payment {
+    id: string;
+    purchaseOrderId: string;
+    paymentNumber: number;
+    paymentDate: string;
+    amount: number;
+    paymentMethod: string;
+    bank?: string;
+    referenceNumber?: string;
+    authorizationCode?: string;
+    documentType?: string;
+    documentNumber?: string;
+    notes?: string;
+    createdAt: string;
+    createdBy?: string;
+    paymentDetails?: PaymentDetail[];
+}
+
+export interface PaymentSummary {
+    totalPaid: number;
+    remainingAmount: number;
+    paymentCount: number;
+}
+
+export interface CreatePaymentPayload {
+    paymentDate: string;
+    amount: number;
+    paymentMethod: string;
+    bank?: string;
+    referenceNumber?: string;
+    authorizationCode?: string;
+    documentType?: string;
+    documentNumber?: string;
+    notes?: string;
+    paymentDetails?: Omit<PaymentDetail, "id">[];
+}
+
+export interface PaymentsQueryParams {
+    purchaseOrderId?: string;
+    page?: number;
+    limit?: number;
+    search?: string;
+}
+
+export interface PaginatedPaymentsResponse {
+    payments?: Payment[];
+    data?: Payment[];
     total: number;
     page: number;
     limit: number;

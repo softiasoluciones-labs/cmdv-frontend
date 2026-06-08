@@ -27,6 +27,7 @@ import {
   DialogTitle,
   DialogFooter,
   DialogDescription,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -37,7 +38,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Search,
   CheckCircle,
@@ -58,6 +58,21 @@ import {
   GitBranch,
   ChevronDown,
   ChevronUp,
+  Zap,
+  Shield,
+  AlertOctagon,
+  Hourglass,
+  LayoutGrid,
+  List,
+  Filter,
+  Save,
+  Trash2,
+  MoreVertical,
+  Send,
+  RefreshCw,
+  Bell,
+  DollarSign,
+  Lightbulb,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -66,81 +81,164 @@ import { Progress } from "@/components/ui/progress";
 import { usePurchaseOrders } from "@/hooks/inventory-hooks/use-purchaseOrder";
 import { useSuppliers } from "@/hooks/inventory-hooks/use-suppliers";
 import { cn } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
 
-// Configuración de estados en español
+// Configuración de estados mejorada
 const statusConfig = {
   draft: {
     label: "Borrador",
-    color: "bg-gray-100 text-gray-700 border-gray-200",
+    color: "bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300",
     icon: FileText,
     description: "Orden en creación",
+    gradient: "from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800",
+    nextActions: ["pending", "cancelled"],
   },
   pending: {
     label: "Pendiente",
-    color: "bg-yellow-50 text-yellow-700 border-yellow-200",
+    color: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400",
     icon: Clock,
     description: "Esperando aprobación",
+    gradient: "from-amber-50 to-yellow-50 dark:from-amber-950/20 dark:to-yellow-950/20",
+    nextActions: ["approved", "cancelled"],
   },
   approved: {
     label: "Aprobada",
-    color: "bg-green-50 text-green-700 border-green-200",
+    color: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400",
     icon: CheckCircle,
     description: "Aprobada para continuar",
+    gradient: "from-emerald-50 to-green-50 dark:from-emerald-950/20 dark:to-green-950/20",
+    nextActions: ["cancelled"],
   },
   cancelled: {
     label: "Cancelada",
-    color: "bg-red-50 text-red-700 border-red-200",
+    color: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-400",
     icon: XCircle,
     description: "Orden cancelada",
+    gradient: "from-rose-50 to-red-50 dark:from-rose-950/20 dark:to-red-950/20",
+    nextActions: [],
   },
   received: {
     label: "Recibida",
-    color: "bg-blue-50 text-blue-700 border-blue-200",
+    color: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400",
     icon: Package,
     description: "Completamente recibida",
+    gradient: "from-blue-50 to-sky-50 dark:from-blue-950/20 dark:to-sky-950/20",
+    nextActions: [],
   },
 };
 
-// Acciones permitidas por estado actual
-const availableActions = {
-  pending: [
-    {
-      action: "approved",
-      label: "Aprobar",
-      icon: CheckCircle,
-      color: "success",
-    },
-    {
-      action: "cancelled",
-      label: "Rechazar",
-      icon: XCircle,
-      color: "destructive",
-    },
-  ],
-  draft: [
-    {
-      action: "pending",
-      label: "Enviar a Aprobación",
-      icon: Clock,
-      color: "warning",
-    },
-    {
-      action: "cancelled",
-      label: "Cancelar",
-      icon: XCircle,
-      color: "destructive",
-    },
-  ],
-  approved: [
-    {
-      action: "cancelled",
-      label: "Cancelar",
-      icon: XCircle,
-      color: "destructive",
-    },
-  ],
-  received: [],
-  cancelled: [],
+// Prioridades
+const priorities = [
+  { value: "high", label: "Alta", color: "text-red-600 bg-red-50", icon: AlertOctagon },
+  { value: "medium", label: "Media", color: "text-amber-600 bg-amber-50", icon: AlertTriangle },
+  { value: "low", label: "Baja", color: "text-blue-600 bg-blue-50", icon: Shield },
+];
+
+// Componente de tarjeta Kanban
+const KanbanCard = ({ order, supplier, onView, onAction, getStatusBadge, getTotalItems }: any) => {
+  const daysWaiting = Math.floor(
+    (new Date().getTime() - new Date(order.orderDate).getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  return (
+    <Card className="group hover:shadow-lg transition-all duration-300 cursor-pointer border-l-4 border-l-primary">
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between mb-3">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-xs font-medium text-muted-foreground">
+                #{order.orderNumber}
+              </span>
+              {getStatusBadge(order.status)}
+            </div>
+            <div className="flex items-center gap-2">
+              <Building2 className="h-3 w-3 text-muted-foreground" />
+              <span className="text-sm font-medium">{supplier?.name || "N/A"}</span>
+            </div>
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => onView(order)}>
+                <Eye className="mr-2 h-4 w-4" />
+                Ver detalles
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Monto:</span>
+            <span className="font-bold text-primary">
+              Q{(order.totalAmount || 0).toLocaleString("es-GT", { minimumFractionDigits: 2 })}
+            </span>
+          </div>
+
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Productos:</span>
+            <span>{getTotalItems(order)} unidades</span>
+          </div>
+
+          {daysWaiting > 0 && (
+            <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center gap-1 text-muted-foreground">
+                <Hourglass className="h-3 w-3" />
+                <span>Espera:</span>
+              </div>
+              <Badge variant={daysWaiting > 7 ? "destructive" : "secondary"} className="text-xs">
+                {daysWaiting} días
+              </Badge>
+            </div>
+          )}
+
+          <div className="pt-2 flex gap-2">
+            {statusConfig[order.status as keyof typeof statusConfig]?.nextActions.map((action) => {
+              const actionConfig = {
+                approved: { label: "Aprobar", icon: CheckCircle, color: "bg-emerald-600 hover:bg-emerald-700" },
+                cancelled: { label: "Rechazar", icon: XCircle, color: "bg-rose-600 hover:bg-rose-700" },
+                pending: { label: "Enviar", icon: Send, color: "bg-amber-600 hover:bg-amber-700" },
+              }[action];
+
+              if (!actionConfig) return null;
+
+              return (
+                <Button
+                  key={action}
+                  size="sm"
+                  className={`flex-1 ${actionConfig.color} text-white`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAction(order, { action, label: actionConfig.label });
+                  }}
+                >
+                  <actionConfig.icon className="mr-1 h-3 w-3" />
+                  {actionConfig.label}
+                </Button>
+              );
+            })}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 };
 
 export default function ApprovePurchaseOrdersPage() {
@@ -156,6 +254,8 @@ export default function ApprovePurchaseOrdersPage() {
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [priorityFilter, setPriorityFilter] = useState("all");
+  const [viewMode, setViewMode] = useState<"table" | "kanban">("table");
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [isActionDialogOpen, setIsActionDialogOpen] = useState(false);
   const [selectedAction, setSelectedAction] = useState<{
@@ -166,56 +266,109 @@ export default function ApprovePurchaseOrdersPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedOrderDetail, setSelectedOrderDetail] = useState<any>(null);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
-  const [showFlow, setShowFlow] = useState(false);
+  const [savedFilters, setSavedFilters] = useState<any[]>([]);
+  const [filterName, setFilterName] = useState("");
 
-  // Filtrar órdenes (solo mostrar las que pueden ser aprobadas/rechazadas)
+  // Cargar filtros guardados del localStorage al iniciar
+  useEffect(() => {
+    const saved = localStorage.getItem("savedPurchaseFilters");
+    if (saved) {
+      try {
+        setSavedFilters(JSON.parse(saved));
+      } catch (e) {
+        console.error("Error loading saved filters:", e);
+      }
+    }
+  }, []);
+
+  // Guardar filtros en localStorage cuando cambien
+  useEffect(() => {
+    localStorage.setItem("savedPurchaseFilters", JSON.stringify(savedFilters));
+  }, [savedFilters]);
+
+  // Filtrar órdenes
   const filterableOrders = useMemo(() => {
     if (!purchaseOrders.length) return [];
 
     return purchaseOrders.filter((order) => {
-      // Solo mostrar órdenes que tienen acciones disponibles
-      const actions =
-        availableActions[order.status as keyof typeof availableActions];
-      if (!actions || actions.length === 0) return false;
+      const supplier = suppliers.find((s) => s.id === order.supplierId);
 
       const matchesSearch =
         order.orderNumber?.toLowerCase().includes(search.toLowerCase()) ||
         order.notes?.toLowerCase().includes(search.toLowerCase()) ||
-        suppliers
-          .find((s) => s.id === order.supplierId)
-          ?.name?.toLowerCase()
-          .includes(search.toLowerCase()) ||
+        supplier?.name?.toLowerCase().includes(search.toLowerCase()) ||
         false;
 
-      const matchesStatus =
-        statusFilter === "all" || order.status === statusFilter;
+      const matchesStatus = statusFilter === "all" || order.status === statusFilter;
 
-      return matchesSearch && matchesStatus;
+      // Prioridad simulada basada en monto y tiempo
+      const daysWaiting = (new Date().getTime() - new Date(order.orderDate).getTime()) / (1000 * 60 * 60 * 24);
+      let priority = "medium";
+      if (order.totalAmount > 50000 || daysWaiting > 7) priority = "high";
+      if (order.totalAmount < 10000 && daysWaiting < 3) priority = "low";
+
+      const matchesPriority = priorityFilter === "all" || priority === priorityFilter;
+
+      return matchesSearch && matchesStatus && matchesPriority;
     });
-  }, [purchaseOrders, search, statusFilter, suppliers]);
+  }, [purchaseOrders, search, statusFilter, priorityFilter, suppliers]);
 
-  // Estadísticas para aprobación
+  // Estadísticas avanzadas
   const approvalStats = useMemo(() => {
-    const pending = purchaseOrders.filter((o) => o.status === "pending").length;
-    const draft = 2; // purchaseOrders.filter((o) => o.status === "draft").length;
-    const approved = purchaseOrders.filter(
-      (o) => o.status === "approved",
+    const total = purchaseOrders.filter(o =>
+      ["draft", "pending", "approved"].includes(o.status)
     ).length;
-    const total = pending + draft;
+    const pending = purchaseOrders.filter((o) => o.status === "pending").length;
+    const approved = purchaseOrders.filter((o) => o.status === "approved").length;
+    const draft = purchaseOrders.filter((o) => o.status === "draft").length;
+    const cancelled = purchaseOrders.filter((o) => o.status === "cancelled").length;
+
+    const avgTimeToApprove = purchaseOrders
+      .filter(o => o.status === "approved" && (o as any).updatedAt)
+      .reduce((acc, o) => {
+        const days = (new Date((o as any).updatedAt).getTime() - new Date(o.orderDate).getTime()) / (1000 * 60 * 60 * 24);
+        return acc + days;
+      }, 0) / (purchaseOrders.filter(o => o.status === "approved").length || 1);
+
+    const totalValue = purchaseOrders
+      .filter(o => o.status === "approved")
+      .reduce((acc, o) => acc + (o.totalAmount || 0), 0);
 
     return {
       pending,
       draft,
       approved,
+      cancelled,
       total,
-      completionRate: total > 0 ? ((approved / total) * 100).toFixed(1) : 0,
+      completionRate: total > 0 ? parseFloat(((approved / total) * 100).toFixed(1)) : 0,
+      avgTimeToApprove: avgTimeToApprove.toFixed(1),
+      totalValue,
+      urgencyCount: purchaseOrders.filter(o =>
+        o.status === "pending" &&
+        (o.totalAmount > 50000 ||
+          (new Date().getTime() - new Date(o.orderDate).getTime()) / (1000 * 60 * 60 * 24) > 5)
+      ).length,
     };
   }, [purchaseOrders]);
 
-  const handleOpenAction = (
-    order: any,
-    action: { action: string; label: string },
-  ) => {
+  // Agrupar órdenes por estado para Kanban
+  const kanbanGroups = useMemo(() => {
+    const groups: Record<string, any[]> = {
+      draft: [],
+      pending: [],
+      approved: [],
+    };
+
+    filterableOrders.forEach(order => {
+      if (groups[order.status]) {
+        groups[order.status].push(order);
+      }
+    });
+
+    return groups;
+  }, [filterableOrders]);
+
+  const handleOpenAction = (order: any, action: { action: string; label: string }) => {
     setSelectedOrder(order);
     setSelectedAction(action);
     setActionComment("");
@@ -227,7 +380,6 @@ export default function ApprovePurchaseOrdersPage() {
 
     setIsSubmitting(true);
     try {
-      // Actualizar el estado de la orden
       const updatedOrder = {
         ...selectedOrder,
         status: selectedAction.action,
@@ -237,7 +389,6 @@ export default function ApprovePurchaseOrdersPage() {
       };
 
       await updatePurchaseOrder(selectedOrder.id, updatedOrder);
-
       setIsActionDialogOpen(false);
       setSelectedOrder(null);
       setSelectedAction(null);
@@ -255,9 +406,33 @@ export default function ApprovePurchaseOrdersPage() {
     setIsDetailDialogOpen(true);
   };
 
+  const handleSaveFilter = () => {
+    if (filterName.trim()) {
+      const newFilter = {
+        id: Date.now(),
+        name: filterName,
+        search,
+        statusFilter,
+        priorityFilter,
+        createdAt: new Date().toISOString(),
+      };
+      setSavedFilters([...savedFilters, newFilter]);
+      setFilterName("");
+    }
+  };
+
+  const handleLoadFilter = (filter: any) => {
+    setSearch(filter.search);
+    setStatusFilter(filter.statusFilter);
+    setPriorityFilter(filter.priorityFilter);
+  };
+
+  const handleDeleteFilter = (filterId: number) => {
+    setSavedFilters(savedFilters.filter(f => f.id !== filterId));
+  };
+
   const getStatusBadge = (status: string) => {
-    const config =
-      statusConfig[status as keyof typeof statusConfig] || statusConfig.draft;
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.draft;
     const Icon = config.icon;
     return (
       <Badge className={`gap-1 ${config.color} border`}>
@@ -268,24 +443,15 @@ export default function ApprovePurchaseOrdersPage() {
   };
 
   const getTotalItems = (order: any) => {
-    return (
-      order?.items?.reduce(
-        (sum: number, item: any) => sum + item.quantity,
-        0,
-      ) || 0
-    );
+    return order?.items?.reduce((sum: number, item: any) => sum + item.quantity, 0) || 0;
   };
 
   if (isLoading && !purchaseOrders.length) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center h-screen">
-          <div className="text-center">
-            <Loader2 className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto" />
-            <p className="mt-4 text-muted-foreground">
-              Cargando órdenes de compra...
-            </p>
-          </div>
+        <div className="space-y-6">
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-64 w-full" />
         </div>
       </DashboardLayout>
     );
@@ -306,275 +472,132 @@ export default function ApprovePurchaseOrdersPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        {/* Header mejorado */}
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <div className="flex items-center gap-2">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <CheckCircle className="h-6 w-6 text-primary" />
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2.5 bg-gradient-to-br from-primary to-primary/70 rounded-xl shadow-lg">
+                <Zap className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold tracking-tight">
-                  Aprobación de Órdenes de Compra
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                  Aprobación de Órdenes
                 </h1>
                 <p className="text-muted-foreground">
-                  Revisa, aprueba o rechaza las órdenes de compra pendientes
+                  Gestiona y revisa las órdenes de compra pendientes de aprobación
                 </p>
               </div>
             </div>
           </div>
+
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => fetchPurchaseOrders()} className="gap-2">
+              <RefreshCw className="h-4 w-4" />
+              Actualizar
+            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" className="gap-2 relative">
+                    <Bell className="h-4 w-4" />
+                    Notificaciones
+                    {approvalStats.urgencyCount > 0 && (
+                      <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full text-[10px] text-white flex items-center justify-center">
+                        {approvalStats.urgencyCount}
+                      </span>
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {approvalStats.urgencyCount} órdenes urgentes por revisar
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Card className="border border-gray-200 bg-white shadow-sm">
-            <CardContent className="p-3">
-              <div className="flex items-center gap-3">
-                <div className="flex-shrink-0">
-                  <Clock className="h-8 w-8 text-yellow-600" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-gray-500">
-                    Pendientes
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {approvalStats.pending}
-                  </p>
-                  <p className="text-[11px] text-gray-500">
-                    Esperando aprobación
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border border-gray-200 bg-white shadow-sm">
-            <CardContent className="p-3">
-              <div className="flex items-center gap-3">
-                <div className="flex-shrink-0">
-                  <FileText className="h-8 w-8 text-gray-500" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-gray-500">
-                    Borradores
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {approvalStats.draft}
-                  </p>
-                  <p className="text-[11px] text-gray-500">
-                    En proceso de creación
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border border-gray-200 bg-white shadow-sm">
-            <CardContent className="p-3">
-              <div className="flex items-center gap-3">
-                <div className="flex-shrink-0">
-                  <CheckCircle className="h-8 w-8 text-green-600" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-gray-500">Aprobadas</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {approvalStats.approved}
-                  </p>
-                  <p className="text-[11px] text-gray-500">
-                    Listas para recibir
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border border-gray-200 bg-white shadow-sm">
-            <CardContent className="p-3">
-              <div className="flex items-center gap-3">
-                <div className="flex-shrink-0">
-                  <TrendingUp className="h-8 w-8 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-gray-500">
-                    Tasa de Aprobación
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {approvalStats.completionRate}%
-                  </p>
-                  <div className="mt-1">
-                    <Progress
-                      value={parseFloat(
-                        approvalStats.completionRate.toString(),
-                      )}
-                      className="h-1.5"
-                    />
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Diagrama de flujo elegante - Colapsable */}
-        <Card className="border-0 bg-white shadow-sm">
-          <CardHeader
-            className="pb-2 cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg"
-            onClick={() => setShowFlow(!showFlow)}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-primary/10">
-                  <GitBranch className="h-4 w-4 text-primary" />
-                </div>
-                <CardTitle className="text-sm font-medium">
-                  Flujo de aprobación
-                </CardTitle>
-              </div>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                {showFlow ? (
-                  <ChevronUp className="h-4 w-4" />
-                ) : (
-                  <ChevronDown className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
-          </CardHeader>
-          {showFlow && (
-            <CardContent className="p-4 pt-0">
-              {/* Contenido del diagrama (sin cambios) */}
+        {/* Stats Cards Avanzados */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-none shadow-md hover:shadow-lg transition-all">
+            <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                {/* Borrador */}
-                <div className="flex-1">
-                  <div className="relative flex flex-col items-center">
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 flex items-center justify-center shadow-sm">
-                      <FileText className="h-5 w-5 text-gray-500" />
-                    </div>
-                    <div className="mt-2 text-center">
-                      <p className="font-semibold text-gray-800 text-sm">
-                        1. Borrador
-                      </p>
-                      <p className="text-[11px] text-gray-500 mt-0.5">
-                        Creación inicial
-                      </p>
-                    </div>
-                    <div className="absolute -right-8 top-5 hidden lg:block">
-                      <div className="flex items-center gap-1">
-                        <div className="w-8 h-0.5 bg-gradient-to-r from-gray-300 to-gray-400" />
-                        <ChevronRight className="h-3 w-3 text-gray-400" />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-2 flex justify-center gap-1">
-                    <div className="px-1.5 py-0.5 bg-yellow-50 rounded-md flex items-center gap-0.5">
-                      <Clock className="h-2.5 w-2.5 text-yellow-600" />
-                      <span className="text-[10px] text-yellow-700">
-                        Enviar
-                      </span>
-                    </div>
-                    <div className="px-1.5 py-0.5 bg-red-50 rounded-md flex items-center gap-0.5">
-                      <XCircle className="h-2.5 w-2.5 text-red-600" />
-                      <span className="text-[10px] text-red-700">Cancelar</span>
-                    </div>
-                  </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Pendientes</p>
+                  <p className="text-3xl font-bold">{approvalStats.pending}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Esperando revisión</p>
                 </div>
-
-                {/* Pendiente */}
-                <div className="flex-1">
-                  <div className="relative flex flex-col items-center">
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-yellow-50 to-yellow-100 border-2 border-yellow-300 flex items-center justify-center shadow-sm">
-                      <Clock className="h-5 w-5 text-yellow-600" />
-                    </div>
-                    <div className="mt-2 text-center">
-                      <p className="font-semibold text-yellow-700 text-sm">
-                        2. Pendiente
-                      </p>
-                      <p className="text-[11px] text-gray-500 mt-0.5">
-                        Espera revisión
-                      </p>
-                    </div>
-                    <div className="absolute -right-8 top-5 hidden lg:block">
-                      <div className="flex items-center gap-1">
-                        <div className="w-8 h-0.5 bg-gradient-to-r from-gray-300 to-gray-400" />
-                        <ChevronRight className="h-3 w-3 text-gray-400" />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-2 flex justify-center gap-1">
-                    <div className="px-1.5 py-0.5 bg-green-50 rounded-md flex items-center gap-0.5">
-                      <CheckCircle className="h-2.5 w-2.5 text-green-600" />
-                      <span className="text-[10px] text-green-700">
-                        Aprobar
-                      </span>
-                    </div>
-                    <div className="px-1.5 py-0.5 bg-red-50 rounded-md flex items-center gap-0.5">
-                      <XCircle className="h-2.5 w-2.5 text-red-600" />
-                      <span className="text-[10px] text-red-700">Rechazar</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Aprobada */}
-                <div className="flex-1">
-                  <div className="flex flex-col items-center">
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-300 flex items-center justify-center shadow-sm">
-                      <CheckCircle className="h-5 w-5 text-green-600" />
-                    </div>
-                    <div className="mt-2 text-center">
-                      <p className="font-semibold text-green-700 text-sm">
-                        3. Aprobada
-                      </p>
-                      <p className="text-[11px] text-gray-500 mt-0.5">
-                        Orden autorizada
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-2 flex justify-center">
-                    <div className="px-1.5 py-0.5 bg-red-50 rounded-md flex items-center gap-0.5">
-                      <XCircle className="h-2.5 w-2.5 text-red-600" />
-                      <span className="text-[10px] text-red-700">Cancelar</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Leyenda adicional */}
-              <div className="mt-4 pt-3 border-t">
-                <div className="flex items-center justify-center gap-4 text-[11px] text-muted-foreground">
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-2.5 h-2.5 rounded-full bg-green-500" />
-                    <span>Acción positiva</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
-                    <span>Acción negativa</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-2.5 h-2.5 rounded-full bg-yellow-500" />
-                    <span>Acción de transición</span>
-                  </div>
+                <div className="h-12 w-12 rounded-full bg-blue-500/10 flex items-center justify-center">
+                  <Clock className="h-6 w-6 text-blue-600" />
                 </div>
               </div>
             </CardContent>
-          )}
-        </Card>
+          </Card>
 
-        {/* Filtros */}
+          <Card className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 border-none shadow-md hover:shadow-lg transition-all">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Tasa de Aprobación</p>
+                  <p className="text-3xl font-bold">{approvalStats.completionRate}%</p>
+                  <Progress value={approvalStats.completionRate} className="mt-2 h-1.5" />
+                </div>
+                <div className="h-12 w-12 rounded-full bg-amber-500/10 flex items-center justify-center">
+                  <TrendingUp className="h-6 w-6 text-amber-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/20 dark:to-teal-950/20 border-none shadow-md hover:shadow-lg transition-all">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Tiempo Promedio</p>
+                  <p className="text-3xl font-bold">{approvalStats.avgTimeToApprove}</p>
+                  <p className="text-xs text-muted-foreground mt-1">días en aprobar</p>
+                </div>
+                <div className="h-12 w-12 rounded-full bg-emerald-500/10 flex items-center justify-center">
+                  <Hourglass className="h-6 w-6 text-emerald-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 border-none shadow-md hover:shadow-lg transition-all">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Valor Aprobado</p>
+                  <p className="text-2xl font-bold">Q{approvalStats.totalValue.toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Total en órdenes</p>
+                </div>
+                <div className="h-12 w-12 rounded-full bg-purple-500/10 flex items-center justify-center">
+                  <DollarSign className="h-6 w-6 text-purple-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Filtros Avanzados con botón de flujo integrado */}
         <Card>
           <CardContent className="p-4">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por número de orden, proveedor o notas..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-              <div className="flex gap-2">
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-wrap gap-3">
+                <div className="relative flex-1 min-w-[200px]">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por número, proveedor o notas..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Filtrar por estado" />
+                  <SelectTrigger className="w-[160px]">
+                    <Filter className="mr-2 h-4 w-4" />
+                    <SelectValue placeholder="Estado" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos los estados</SelectItem>
@@ -584,206 +607,522 @@ export default function ApprovePurchaseOrdersPage() {
                     <SelectItem value="cancelled">Cancelada</SelectItem>
                   </SelectContent>
                 </Select>
+
+                <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+                  <SelectTrigger className="w-[160px]">
+                    <AlertTriangle className="mr-2 h-4 w-4" />
+                    <SelectValue placeholder="Prioridad" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas</SelectItem>
+                    {priorities.map(p => (
+                      <SelectItem key={p.value} value={p.value}>
+                        <div className="flex items-center gap-2">
+                          <p.icon className="h-3 w-3" />
+                          {p.label}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => {
+                    setSearch("");
+                    setStatusFilter("all");
+                    setPriorityFilter("all");
+                  }} className="gap-2">
+                    <Trash2 className="h-4 w-4" />
+                    Limpiar
+                  </Button>
+
+                  {/* Botón de ayuda para el flujo */}
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" className="gap-2">
+                        <GitBranch className="h-4 w-4" />
+                        <span className="hidden sm:inline">Flujo</span>
+                        <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-primary/10 text-primary text-[10px] font-bold ml-1">
+                          ?
+                        </span>
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                          <div className="p-1.5 rounded-lg bg-primary/10">
+                            <GitBranch className="h-5 w-5 text-primary" />
+                          </div>
+                          Flujo de Aprobación de Órdenes
+                        </DialogTitle>
+                        <DialogDescription>
+                          Visualiza el proceso completo de aprobación y las acciones disponibles en cada estado
+                        </DialogDescription>
+                      </DialogHeader>
+
+                      <div className="py-6">
+                        <div className="relative">
+                          <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 -translate-y-1/2 hidden lg:block" />
+                          <div className="relative flex flex-col lg:flex-row items-center justify-between gap-6">
+                            {[
+                              { status: "draft", label: "Borrador", icon: FileText, color: "gray", description: "Creación inicial", actions: ["Enviar a aprobación", "Cancelar"] },
+                              { status: "pending", label: "Pendiente", icon: Clock, color: "amber", description: "Espera revisión", actions: ["Aprobar", "Rechazar"] },
+                              { status: "approved", label: "Aprobada", icon: CheckCircle, color: "emerald", description: "Orden autorizada", actions: ["Cancelar"] },
+                              { status: "received", label: "Recibida", icon: Package, color: "blue", description: "Completada", actions: [] },
+                            ].map((step, idx, arr) => {
+                              const getGradientClass = () => {
+                                const gradients = {
+                                  gray: "from-gray-50 to-gray-100 dark:from-gray-950/30 dark:to-gray-950/20",
+                                  amber: "from-amber-50 to-yellow-50 dark:from-amber-950/30 dark:to-yellow-950/20",
+                                  emerald: "from-emerald-50 to-green-50 dark:from-emerald-950/30 dark:to-green-950/20",
+                                  blue: "from-blue-50 to-sky-50 dark:from-blue-950/30 dark:to-sky-950/20",
+                                };
+                                return gradients[step.color as keyof typeof gradients] || gradients.gray;
+                              };
+
+                              const getIconColorClass = () => {
+                                const colors = {
+                                  gray: "text-gray-600",
+                                  amber: "text-amber-600",
+                                  emerald: "text-emerald-600",
+                                  blue: "text-blue-600",
+                                };
+                                return colors[step.color as keyof typeof colors] || colors.gray;
+                              };
+
+                              return (
+                                <div key={step.status} className="relative flex-1 text-center z-10">
+                                  <div className="inline-flex flex-col items-center">
+                                    <div className={cn(
+                                      "w-20 h-20 rounded-2xl bg-gradient-to-br flex items-center justify-center shadow-lg mb-3 transition-all hover:scale-105",
+                                      getGradientClass()
+                                    )}>
+                                      <step.icon className={cn("h-8 w-8", getIconColorClass())} />
+                                    </div>
+                                    <p className="font-semibold text-base">{step.label}</p>
+                                    <p className="text-xs text-muted-foreground mt-1">{step.description}</p>
+                                    <div className="mt-2 flex flex-wrap justify-center gap-1">
+                                      {step.actions.map(action => (
+                                        <Badge key={action} variant="secondary" className="text-[10px]">
+                                          {action}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  </div>
+                                  {idx < arr.length - 1 && (
+                                    <div className="hidden lg:block absolute -right-8 top-10">
+                                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Leyenda adicional */}
+                        <div className="mt-8 pt-6 border-t">
+                          <h4 className="text-sm font-semibold mb-3">Leyenda de acciones</h4>
+                          <div className="flex flex-wrap items-center justify-center gap-6 text-sm">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-emerald-500" />
+                              <span className="text-muted-foreground">Acción positiva</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-rose-500" />
+                              <span className="text-muted-foreground">Acción negativa</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-amber-500" />
+                              <span className="text-muted-foreground">Acción de transición</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-blue-500" />
+                              <span className="text-muted-foreground">Estado final</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Tips adicionales */}
+                        <div className="mt-6 p-4 bg-muted/30 rounded-lg">
+                          <div className="flex items-start gap-3">
+                            <Lightbulb className="h-5 w-5 text-primary mt-0.5" />
+                            <div>
+                              <p className="text-sm font-medium mb-1">Tips rápidos:</p>
+                              <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
+                                <li>Las órdenes en estado <strong>Borrador</strong> pueden ser editadas completamente</li>
+                                <li>Una vez <strong>Aprobada</strong>, la orden pasa al área de recepción</li>
+                                <li>Las órdenes <strong>Canceladas</strong> no pueden ser reactivadas</li>
+                                <li>Puedes agregar comentarios en cada acción para mantener trazabilidad</li>
+                              </ul>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <DialogFooter>
+                        <Button onClick={() => { }} variant="outline">
+                          Entendido
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+
+                  {/* Botón guardar filtro */}
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" className="gap-2">
+                        <Save className="h-4 w-4" />
+                        <span className="hidden sm:inline">Guardar filtro</span>
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Guardar filtro personalizado</DialogTitle>
+                        <DialogDescription>
+                          Guarda la combinación actual de búsqueda y filtros para usarla rápidamente después.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div className="p-3 bg-muted/30 rounded-lg">
+                          <p className="text-xs text-muted-foreground mb-2">Vista previa del filtro:</p>
+                          <div className="space-y-1 text-sm">
+                            {search && <div>🔍 Buscar: "{search}"</div>}
+                            {statusFilter !== "all" && <div>📊 Estado: {statusFilter === "pending" ? "Pendiente" : statusFilter === "approved" ? "Aprobada" : statusFilter}</div>}
+                            {priorityFilter !== "all" && <div>⚠️ Prioridad: {priorityFilter === "high" ? "Alta" : priorityFilter === "medium" ? "Media" : "Baja"}</div>}
+                            {!search && statusFilter === "all" && priorityFilter === "all" && (
+                              <div className="text-muted-foreground">Mostrando todas las órdenes</div>
+                            )}
+                          </div>
+                        </div>
+                        <div>
+                          <Label>Nombre del filtro</Label>
+                          <Input
+                            value={filterName}
+                            onChange={(e) => setFilterName(e.target.value)}
+                            placeholder="Ej: Órdenes urgentes de alto monto"
+                            className="mt-1"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Usa un nombre descriptivo para identificar fácilmente este filtro después
+                          </p>
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setFilterName("")}>
+                          Cancelar
+                        </Button>
+                        <Button onClick={handleSaveFilter}>
+                          <Save className="mr-2 h-4 w-4" />
+                          Guardar filtro
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+
+                {/* Vista toggle */}
+                <div className="flex gap-1 ml-auto">
+                  <Button
+                    variant={viewMode === "table" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setViewMode("table")}
+                    className="gap-1"
+                  >
+                    <List className="h-4 w-4" />
+                    <span className="hidden sm:inline">Tabla</span>
+                  </Button>
+                  <Button
+                    variant={viewMode === "kanban" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setViewMode("kanban")}
+                    className="gap-1"
+                  >
+                    <LayoutGrid className="h-4 w-4" />
+                    <span className="hidden sm:inline">Kanban</span>
+                  </Button>
+                </div>
               </div>
+
+              {/* Filtros guardados */}
+              {savedFilters.length > 0 && (
+                <div className="flex flex-wrap gap-2 pt-2 border-t">
+                  <span className="text-xs text-muted-foreground">Filtros guardados:</span>
+                  {savedFilters.map(filter => (
+                    <Badge
+                      key={filter.id}
+                      variant="secondary"
+                      className="cursor-pointer hover:bg-secondary/80 group"
+                      onClick={() => handleLoadFilter(filter)}
+                    >
+                      {filter.name}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-4 w-4 ml-1 p-0 hover:bg-transparent"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteFilter(filter.id);
+                        }}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
 
-        {/* Tabla de órdenes */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Órdenes para revisión</CardTitle>
-            <CardDescription>
-              {filterableOrders.length}{" "}
-              {filterableOrders.length === 1 ? "orden" : "órdenes"} encontrada
-              {filterableOrders.length !== 1 && "s"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {filterableOrders.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted mb-4">
-                  <CheckCircle className="h-8 w-8 text-muted-foreground" />
+        {/* Vista de contenido */}
+        {viewMode === "table" ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Órdenes para revisión</CardTitle>
+              <CardDescription>
+                {filterableOrders.length} {filterableOrders.length === 1 ? "orden" : "órdenes"} encontrada{filterableOrders.length !== 1 && "s"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {filterableOrders.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted mb-4">
+                    <CheckCircle className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2">No hay órdenes para revisar</h3>
+                  <p className="text-muted-foreground">
+                    Todas las órdenes han sido procesadas o no hay órdenes pendientes
+                  </p>
                 </div>
-                <h3 className="text-lg font-semibold mb-2">
-                  No hay órdenes para revisar
-                </h3>
-                <p className="text-muted-foreground">
-                  Todas las órdenes han sido procesadas o no hay órdenes
-                  pendientes
-                </p>
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Número de Orden</TableHead>
-                    <TableHead>Proveedor</TableHead>
-                    <TableHead>Fecha</TableHead>
-                    <TableHead className="text-right">Monto</TableHead>
-                    <TableHead>Estado Actual</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filterableOrders.map((order) => {
-                    const supplier = suppliers.find(
-                      (s) => s.id === order.supplierId,
-                    );
-                    const actions =
-                      availableActions[
-                        order.status as keyof typeof availableActions
-                      ];
-
-                    return (
-                      <TableRow key={order.id} className="group">
-                        <TableCell className="font-medium">
-                          <div className="flex flex-col">
-                            <span className="font-mono text-sm">
-                              {order.orderNumber}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {getTotalItems(order)} productos
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Building2 className="h-4 w-4 text-muted-foreground" />
-                            <span>{supplier?.name || "N/A"}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm">
-                              {new Date(order.orderDate).toLocaleDateString(
-                                "es-GT",
-                              )}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex flex-col items-end">
-                            <span className="font-medium">
-                              Q
-                              {(order.totalAmount || 0).toLocaleString(
-                                "es-GT",
-                                { minimumFractionDigits: 2 },
-                              )}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              Total
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>{getStatusBadge(order.status)}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleViewDetails(order)}
-                              className="gap-1"
-                            >
-                              <Eye className="h-4 w-4" />
-                              Ver
-                            </Button>
-                            {actions?.map((action) => {
-                              const Icon = action.icon;
-                              const colorClass =
-                                action.color === "success"
-                                  ? "text-green-600 hover:text-green-700 hover:bg-green-50"
-                                  : action.color === "destructive"
-                                    ? "text-red-600 hover:text-red-700 hover:bg-red-50"
-                                    : "text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50";
-                              return (
-                                <Button
-                                  key={action.action}
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() =>
-                                    handleOpenAction(order, action)
-                                  }
-                                  className={`gap-1 ${colorClass}`}
-                                >
-                                  <Icon className="h-4 w-4" />
-                                  {action.label}
-                                </Button>
-                              );
-                            })}
-                          </div>
-                        </TableCell>
+              ) : (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Número de Orden</TableHead>
+                        <TableHead>Proveedor</TableHead>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead className="text-right">Monto</TableHead>
+                        <TableHead>Estado</TableHead>
+                        <TableHead>Prioridad</TableHead>
+                        <TableHead className="text-right">Acciones</TableHead>
                       </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filterableOrders.map((order) => {
+                        const supplier = suppliers.find((s) => s.id === order.supplierId);
+                        const daysWaiting = Math.floor(
+                          (new Date().getTime() - new Date(order.orderDate).getTime()) / (1000 * 60 * 60 * 24)
+                        );
+
+                        let priority = { value: "medium", label: "Media", color: "text-amber-600 bg-amber-50", icon: AlertTriangle };
+                        if (order.totalAmount > 50000 || daysWaiting > 7) {
+                          priority = { value: "high", label: "Alta", color: "text-red-600 bg-red-50", icon: AlertOctagon };
+                        } else if (order.totalAmount < 10000 && daysWaiting < 3) {
+                          priority = { value: "low", label: "Baja", color: "text-blue-600 bg-blue-50", icon: Shield };
+                        }
+
+                        const PriorityIcon = priority.icon;
+
+                        return (
+                          <TableRow key={order.id} className="group hover:bg-muted/50 transition-colors">
+                            <TableCell className="font-medium">
+                              <div className="flex flex-col">
+                                <span className="font-mono text-sm">{order.orderNumber}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {getTotalItems(order)} productos
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Avatar className="h-6 w-6">
+                                  <AvatarFallback className="text-xs">
+                                    {supplier?.name?.charAt(0) || "N"}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span>{supplier?.name || "N/A"}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Calendar className="h-4 w-4 text-muted-foreground" />
+                                <span className="text-sm">
+                                  {new Date(order.orderDate).toLocaleDateString("es-GT")}
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex flex-col items-end">
+                                <span className="font-bold">
+                                  Q{(order.totalAmount || 0).toLocaleString("es-GT", { minimumFractionDigits: 2 })}
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell>{getStatusBadge(order.status)}</TableCell>
+                            <TableCell>
+                              <Badge className={`gap-1 ${priority.color} border-0`}>
+                                <PriorityIcon className="h-3 w-3" />
+                                {priority.label}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-1">
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleViewDetails(order)}
+                                        className="h-8 w-8 p-0"
+                                      >
+                                        <Eye className="h-4 w-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Ver detalles</TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+
+                                {statusConfig[order.status as keyof typeof statusConfig]?.nextActions.map((action) => {
+                                  const actionConfig = {
+                                    approved: { label: "Aprobar", icon: CheckCircle, color: "success" },
+                                    cancelled: { label: "Rechazar", icon: XCircle, color: "destructive" },
+                                    pending: { label: "Enviar", icon: Send, color: "warning" },
+                                  }[action];
+
+                                  if (!actionConfig) return null;
+
+                                  const colorClass = actionConfig.color === "success"
+                                    ? "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                                    : actionConfig.color === "destructive"
+                                      ? "text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                                      : "text-amber-600 hover:text-amber-700 hover:bg-amber-50";
+
+                                  return (
+                                    <Tooltip key={action}>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => handleOpenAction(order, { action, label: actionConfig.label })}
+                                          className={`h-8 w-8 p-0 ${colorClass}`}
+                                        >
+                                          <actionConfig.icon className="h-4 w-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>{actionConfig.label}</TooltipContent>
+                                    </Tooltip>
+                                  );
+                                })}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {Object.entries(kanbanGroups).map(([status, orders]) => (
+              <div key={status} className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    {getStatusBadge(status)}
+                    <span className="text-sm text-muted-foreground">
+                      ({orders.length})
+                    </span>
+                  </div>
+                </div>
+                <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-2">
+                  {orders.map((order) => {
+                    const supplier = suppliers.find((s) => s.id === order.supplierId);
+                    return (
+                      <KanbanCard
+                        key={order.id}
+                        order={order}
+                        supplier={supplier}
+                        onView={handleViewDetails}
+                        onAction={handleOpenAction}
+                        getStatusBadge={getStatusBadge}
+                        getTotalItems={getTotalItems}
+                      />
                     );
                   })}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
+                  {orders.length === 0 && (
+                    <Card className="border-dashed">
+                      <CardContent className="p-8 text-center text-muted-foreground">
+                        <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">No hay órdenes</p>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Dialog para confirmar acción */}
+      {/* Diálogo de acción */}
       <Dialog open={isActionDialogOpen} onOpenChange={setIsActionDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {selectedAction?.action === "approved" && (
-                <CheckCircle className="h-5 w-5 text-green-600" />
+                <div className="p-1 rounded-full bg-emerald-100 dark:bg-emerald-900">
+                  <CheckCircle className="h-5 w-5 text-emerald-600" />
+                </div>
               )}
               {selectedAction?.action === "cancelled" && (
-                <XCircle className="h-5 w-5 text-red-600" />
+                <div className="p-1 rounded-full bg-rose-100 dark:bg-rose-900">
+                  <XCircle className="h-5 w-5 text-rose-600" />
+                </div>
               )}
               {selectedAction?.action === "pending" && (
-                <Clock className="h-5 w-5 text-yellow-600" />
+                <div className="p-1 rounded-full bg-amber-100 dark:bg-amber-900">
+                  <Clock className="h-5 w-5 text-amber-600" />
+                </div>
               )}
               {selectedAction?.label}
             </DialogTitle>
             <DialogDescription>
-              ¿Estás seguro de que deseas {selectedAction?.label.toLowerCase()}{" "}
-              la orden{" "}
-              <span className="font-mono font-medium">
-                {selectedOrder?.orderNumber}
-              </span>
-              ?
+              ¿Estás seguro de que deseas {selectedAction?.label.toLowerCase()} la orden{" "}
+              <span className="font-mono font-medium">{selectedOrder?.orderNumber}</span>?
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
-            {/* Información de la orden */}
-            <Card className="bg-muted/50">
-              <CardContent className="p-4 space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Proveedor:</span>
+            <Card className="bg-gradient-to-br from-muted/50 to-muted/30">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Proveedor:</span>
                   <span className="font-medium">
-                    {suppliers.find((s) => s.id === selectedOrder?.supplierId)
-                      ?.name || "N/A"}
+                    {suppliers.find((s) => s.id === selectedOrder?.supplierId)?.name || "N/A"}
                   </span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Monto total:</span>
-                  <span className="font-medium">
-                    Q
-                    {(selectedOrder?.totalAmount || 0).toLocaleString("es-GT", {
-                      minimumFractionDigits: 2,
-                    })}
+                <Separator />
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Monto total:</span>
+                  <span className="text-xl font-bold text-primary">
+                    Q{(selectedOrder?.totalAmount || 0).toLocaleString("es-GT", { minimumFractionDigits: 2 })}
                   </span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Productos:</span>
-                  <span className="font-medium">
-                    {getTotalItems(selectedOrder)} unidades
-                  </span>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Productos:</span>
+                  <span className="font-medium">{getTotalItems(selectedOrder)} unidades</span>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Comentario opcional */}
             <div className="space-y-2">
               <Label htmlFor="comment">
-                Comentario{" "}
-                {selectedAction?.action === "cancelled" && "(opcional)"}
+                Comentario {selectedAction?.action === "cancelled" && "(opcional)"}
               </Label>
               <Textarea
                 id="comment"
@@ -797,54 +1136,34 @@ export default function ApprovePurchaseOrdersPage() {
                 value={actionComment}
                 onChange={(e) => setActionComment(e.target.value)}
                 rows={3}
+                className="resize-none"
               />
-              <p className="text-xs text-muted-foreground">
-                {selectedAction?.action === "cancelled"
-                  ? "Se recomienda agregar un motivo de cancelación"
-                  : "Opcional: Agrega notas adicionales sobre esta decisión"}
-              </p>
             </div>
           </div>
 
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsActionDialogOpen(false)}
-              disabled={isSubmitting}
-            >
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setIsActionDialogOpen(false)} disabled={isSubmitting}>
               Cancelar
             </Button>
             <Button
               onClick={handleSubmitAction}
               disabled={isSubmitting}
               className={cn(
-                selectedAction?.action === "approved" &&
-                  "bg-green-600 hover:bg-green-700",
-                selectedAction?.action === "cancelled" &&
-                  "bg-red-600 hover:bg-red-700",
-                selectedAction?.action === "pending" &&
-                  "bg-yellow-600 hover:bg-yellow-700",
+                selectedAction?.action === "approved" && "bg-emerald-600 hover:bg-emerald-700",
+                selectedAction?.action === "cancelled" && "bg-rose-600 hover:bg-rose-700",
+                selectedAction?.action === "pending" && "bg-amber-600 hover:bg-amber-700",
+                "gap-2"
               )}
             >
-              {isSubmitting && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
-              {selectedAction?.action === "approved" && (
-                <Check className="mr-2 h-4 w-4" />
-              )}
-              {selectedAction?.action === "cancelled" && (
-                <X className="mr-2 h-4 w-4" />
-              )}
-              {selectedAction?.action === "pending" && (
-                <Clock className="mr-2 h-4 w-4" />
-              )}
+              {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+              <Check className="h-4 w-4" />
               Confirmar {selectedAction?.label}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Dialog para ver detalles de la orden */}
+      {/* Diálogo de detalles */}
       <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh]">
           {selectedOrderDetail && (
@@ -855,38 +1174,28 @@ export default function ApprovePurchaseOrdersPage() {
                   {getStatusBadge(selectedOrderDetail.status)}
                 </DialogTitle>
                 <DialogDescription>
-                  Orden:{" "}
-                  <span className="font-mono font-medium">
-                    {selectedOrderDetail.orderNumber}
-                  </span>
+                  Orden: <span className="font-mono font-medium">{selectedOrderDetail.orderNumber}</span>
                 </DialogDescription>
               </DialogHeader>
 
               <ScrollArea className="h-[60vh] pr-4">
                 <div className="space-y-6">
-                  {/* Información general */}
                   <div className="grid grid-cols-2 gap-6">
                     <div className="space-y-3">
                       <h4 className="font-semibold flex items-center gap-2">
                         <Building2 className="h-4 w-4" />
                         Información del Proveedor
                       </h4>
-                      <div className="space-y-2 text-sm">
+                      <div className="space-y-2 text-sm bg-muted/30 rounded-lg p-3">
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Nombre:</span>
                           <span className="font-medium">
-                            {suppliers.find(
-                              (s) => s.id === selectedOrderDetail.supplierId,
-                            )?.name || "N/A"}
+                            {suppliers.find((s) => s.id === selectedOrderDetail.supplierId)?.name || "N/A"}
                           </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Email:</span>
-                          <span>
-                            {suppliers.find(
-                              (s) => s.id === selectedOrderDetail.supplierId,
-                            )?.email || "N/A"}
-                          </span>
+                          <span>{suppliers.find((s) => s.id === selectedOrderDetail.supplierId)?.email || "N/A"}</span>
                         </div>
                       </div>
                     </div>
@@ -896,23 +1205,15 @@ export default function ApprovePurchaseOrdersPage() {
                         <Warehouse className="h-4 w-4" />
                         Información de Entrega
                       </h4>
-                      <div className="space-y-2 text-sm">
+                      <div className="space-y-2 text-sm bg-muted/30 rounded-lg p-3">
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">
-                            Bodega destino:
-                          </span>
-                          <span className="font-medium">
-                            {selectedOrderDetail.warehouseName || "N/A"}
-                          </span>
+                          <span className="text-muted-foreground">Bodega destino:</span>
+                          <span className="font-medium">{selectedOrderDetail.warehouseName || "N/A"}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">
-                            Fecha esperada:
-                          </span>
+                          <span className="text-muted-foreground">Fecha esperada:</span>
                           <span>
-                            {new Date(
-                              selectedOrderDetail.expectedDate,
-                            ).toLocaleDateString("es-GT")}
+                            {new Date(selectedOrderDetail.expectedDate).toLocaleDateString("es-GT")}
                           </span>
                         </div>
                       </div>
@@ -921,95 +1222,59 @@ export default function ApprovePurchaseOrdersPage() {
 
                   <Separator />
 
-                  {/* Productos */}
                   <div>
                     <h4 className="font-semibold mb-3 flex items-center gap-2">
                       <Package className="h-4 w-4" />
                       Productos ({selectedOrderDetail.items?.length || 0})
                     </h4>
-                    <Card>
-                      <CardContent className="p-0">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Producto</TableHead>
-                              <TableHead className="text-right">
-                                Cantidad
-                              </TableHead>
-                              <TableHead className="text-right">
-                                Costo Unitario
-                              </TableHead>
-                              <TableHead className="text-right">
-                                Subtotal
-                              </TableHead>
+                    <div className="rounded-lg border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Producto</TableHead>
+                            <TableHead className="text-right">Cantidad</TableHead>
+                            <TableHead className="text-right">Costo Unitario</TableHead>
+                            <TableHead className="text-right">Subtotal</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {(selectedOrderDetail.items || []).map((item: any) => (
+                            <TableRow key={item.id}>
+                              <TableCell>
+                                <div>
+                                  <div className="font-medium">{item.productName}</div>
+                                  <div className="text-xs text-muted-foreground">Código: {item.productCode}</div>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-right font-mono">{item.quantity}</TableCell>
+                              <TableCell className="text-right">Q{item.unitCost?.toFixed(2) || 0}</TableCell>
+                              <TableCell className="text-right font-medium">
+                                Q{(item.quantity * item.unitCost).toFixed(2)}
+                              </TableCell>
                             </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {(selectedOrderDetail.items || []).map(
-                              (item: any) => (
-                                <TableRow key={item.id}>
-                                  <TableCell>
-                                    <div>
-                                      <div className="font-medium">
-                                        {item.productName}
-                                      </div>
-                                      <div className="text-xs text-muted-foreground">
-                                        Código: {item.productCode}
-                                      </div>
-                                      {item.batchNumber && (
-                                        <div className="text-xs text-muted-foreground">
-                                          Lote: {item.batchNumber}
-                                        </div>
-                                      )}
-                                    </div>
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    {item.quantity}
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    Q{item.unitCost?.toFixed(2) || 0}
-                                  </TableCell>
-                                  <TableCell className="text-right font-medium">
-                                    Q
-                                    {(item.quantity * item.unitCost).toFixed(2)}
-                                  </TableCell>
-                                </TableRow>
-                              ),
-                            )}
-                          </TableBody>
-                        </Table>
-                      </CardContent>
-                    </Card>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
                   </div>
 
-                  {/* Resumen financiero */}
-                  <Card className="bg-primary/5">
+                  <Card className="bg-gradient-to-r from-primary/5 to-primary/10">
                     <CardContent className="p-4">
                       <div className="flex justify-between items-center">
                         <div>
-                          <p className="text-sm text-muted-foreground">
-                            Total de la Orden
-                          </p>
-                          <p className="text-2xl font-bold text-primary">
-                            Q
-                            {(
-                              selectedOrderDetail.totalAmount || 0
-                            ).toLocaleString("es-GT", {
-                              minimumFractionDigits: 2,
-                            })}
+                          <p className="text-sm text-muted-foreground">Total de la Orden</p>
+                          <p className="text-3xl font-bold text-primary">
+                            Q{(selectedOrderDetail.totalAmount || 0).toLocaleString("es-GT", { minimumFractionDigits: 2 })}
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm text-muted-foreground">
-                            Estado actual
-                          </p>
+                          <p className="text-sm text-muted-foreground">Estado actual</p>
                           {getStatusBadge(selectedOrderDetail.status)}
                         </div>
                       </div>
                     </CardContent>
                   </Card>
 
-                  {/* Notas */}
                   {selectedOrderDetail.notes && (
                     <Card>
                       <CardHeader>
@@ -1019,9 +1284,7 @@ export default function ApprovePurchaseOrdersPage() {
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <p className="text-sm whitespace-pre-wrap">
-                          {selectedOrderDetail.notes}
-                        </p>
+                        <p className="text-sm whitespace-pre-wrap">{selectedOrderDetail.notes}</p>
                       </CardContent>
                     </Card>
                   )}
@@ -1029,33 +1292,29 @@ export default function ApprovePurchaseOrdersPage() {
               </ScrollArea>
 
               <DialogFooter className="gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setIsDetailDialogOpen(false)}
-                >
+                <Button variant="outline" onClick={() => setIsDetailDialogOpen(false)}>
                   Cerrar
                 </Button>
-                {availableActions[
-                  selectedOrderDetail.status as keyof typeof availableActions
-                ]?.map((action) => {
-                  const Icon = action.icon;
-                  const colorClass =
-                    action.action === "approved"
-                      ? "bg-green-600 hover:bg-green-700"
-                      : action.action === "cancelled"
-                        ? "bg-red-600 hover:bg-red-700"
-                        : "bg-yellow-600 hover:bg-yellow-700";
+                {statusConfig[selectedOrderDetail.status as keyof typeof statusConfig]?.nextActions.map((action) => {
+                  const actionConfig = {
+                    approved: { label: "Aprobar", icon: CheckCircle, color: "bg-emerald-600 hover:bg-emerald-700" },
+                    cancelled: { label: "Rechazar", icon: XCircle, color: "bg-rose-600 hover:bg-rose-700" },
+                    pending: { label: "Enviar", icon: Send, color: "bg-amber-600 hover:bg-amber-700" },
+                  }[action];
+
+                  if (!actionConfig) return null;
+
                   return (
                     <Button
-                      key={action.action}
+                      key={action}
                       onClick={() => {
                         setIsDetailDialogOpen(false);
-                        handleOpenAction(selectedOrderDetail, action);
+                        handleOpenAction(selectedOrderDetail, { action, label: actionConfig.label });
                       }}
-                      className={colorClass}
+                      className={actionConfig.color}
                     >
-                      <Icon className="mr-2 h-4 w-4" />
-                      {action.label}
+                      <actionConfig.icon className="mr-2 h-4 w-4" />
+                      {actionConfig.label}
                     </Button>
                   );
                 })}
