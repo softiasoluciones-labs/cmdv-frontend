@@ -21,7 +21,7 @@ export const purchaseOrderService = {
     },
 
     getPurchaseOrdersReadyForPayment: async () => {
-        return api.get<PaginatedPurchaseOrdersResponse>(PURCHASE_ORDER_ENDPOINT, { status: "approved" });
+        return api.get<PaginatedPurchaseOrdersResponse>(PURCHASE_ORDER_ENDPOINT, { status: ["approved", "received"] });
     },
 
     getPurchaseOrderById: async (id: string) => {
@@ -38,5 +38,9 @@ export const purchaseOrderService = {
 
     receivePurchaseOrder: async (id: string, data: PurchaseOrderReceivedItems) => {
         return api.post(`${PURCHASE_ORDER_ENDPOINT}${id}/receive`, data);
+    },
+
+    removeItemDetail: async (orderId: string, detailId: string) => {
+        return api.delete<PurchaseOrder>(`${PURCHASE_ORDER_ENDPOINT}${orderId}/details/${detailId}`);
     }
 }

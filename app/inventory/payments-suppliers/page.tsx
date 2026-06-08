@@ -800,109 +800,117 @@ export default function PurchaseOrderPaymentsPage() {
             </div>
 
             <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
-                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                        <DialogTitle>Registrar Pago</DialogTitle>
-                        <DialogDescription>
-                            <div className="space-y-1">
-                                <p>Orden: <span className="font-mono">{selectedOrder?.orderNumber}</span> •
-                                    Proveedor: <span className="font-medium">{selectedOrder && suppliers.find(s => s.id === selectedOrder.supplierId)?.name}</span></p>
-                                <div className="text-sm space-y-0.5 mt-2 pt-2 border-t">
-                                    <p className="flex justify-between">
-                                        <span className="text-muted-foreground">Término de pago:</span>
-                                        <span className="font-medium capitalize">{paymentTerms.replace('_', ' ')}</span>
-                                    </p>
-                                    <p className="flex justify-between">
-                                        <span className="text-muted-foreground">Pagos permitidos:</span>
-                                        <span className="font-medium">{getAllowedPaymentCount(paymentTerms)}</span>
-                                    </p>
-                                    <p className="flex justify-between">
-                                        <span className="text-muted-foreground">Pagos realizados:</span>
-                                        <span className="font-medium">{summary.paymentCount}</span>
-                                    </p>
-                                    <p className="flex justify-between">
-                                        <span className="text-muted-foreground">Pagos restantes:</span>
-                                        <span className={`font-medium ${remainingPayments === 0 ? 'text-red-600' : 'text-green-600'}`}>
-                                            {remainingPayments}
-                                        </span>
-                                    </p>
-                                    <p className="flex justify-between">
-                                        <span className="text-muted-foreground">Saldo pendiente:</span>
-                                        <span className="font-bold text-primary">{formatCurrency(maxAllowedAmount)}</span>
-                                    </p>
-                                </div>
-                            </div>
+                <DialogContent
+                    className="w-[95vw] max-w-[1000px] h-[85vh] p-0 flex flex-col"
+                    onPointerDownOutside={(e) => e.preventDefault()}
+                    onEscapeKeyDown={(e) => e.preventDefault()}
+                >
+                    <DialogHeader className="p-5 pb-3 shrink-0 border-b">
+                        <DialogTitle className="text-xl">Registrar Pago</DialogTitle>
+                        <DialogDescription className="text-sm mt-1">
+                            Orden: <span className="font-mono font-semibold">{selectedOrder?.orderNumber}</span> •
+                            Proveedor: <span className="font-medium">{selectedOrder && suppliers.find(s => s.id === selectedOrder.supplierId)?.name}</span>
                         </DialogDescription>
+
+                        {/* Resumen de pagos en tarjeta compacta */}
+                        <div className="mt-3 bg-muted/30 rounded-lg p-3 grid grid-cols-2 md:grid-cols-5 gap-2 text-sm">
+                            <div>
+                                <p className="text-xs text-muted-foreground">Término</p>
+                                <p className="font-medium capitalize text-sm">{paymentTerms.replace('_', ' ')}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-muted-foreground">Pagos permitidos</p>
+                                <p className="font-medium">{getAllowedPaymentCount(paymentTerms)}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-muted-foreground">Pagos realizados</p>
+                                <p className="font-medium">{summary.paymentCount}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-muted-foreground">Pagos restantes</p>
+                                <p className={`font-medium ${remainingPayments === 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                    {remainingPayments}
+                                </p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-muted-foreground">Saldo pendiente</p>
+                                <p className="font-bold text-primary">{formatCurrency(maxAllowedAmount)}</p>
+                            </div>
+                        </div>
                     </DialogHeader>
 
-                    <ScrollArea className="h-[60vh] pr-4">
-                        <div className="space-y-6">
-                            {/* Alerta de límite de pagos */}
+                    {/* Scrollable content */}
+                    <div className="flex-1 overflow-y-auto px-5 py-4">
+                        <div className="space-y-5">
+                            {/* Alertas */}
                             {formErrors.paymentLimit && (
-                                <Alert variant="destructive">
+                                <Alert variant="destructive" className="py-2">
                                     <AlertTriangle className="h-4 w-4" />
-                                    <AlertTitle>Límite de pagos alcanzado</AlertTitle>
-                                    <AlertDescription>{formErrors.paymentLimit}</AlertDescription>
+                                    <AlertTitle className="text-sm">Límite de pagos alcanzado</AlertTitle>
+                                    <AlertDescription className="text-xs">{formErrors.paymentLimit}</AlertDescription>
                                 </Alert>
                             )}
 
-                            {/* Alerta de monto excedido */}
                             {formErrors.amount && !formErrors.paymentLimit && (
-                                <Alert variant="destructive">
+                                <Alert variant="destructive" className="py-2">
                                     <AlertTriangle className="h-4 w-4" />
-                                    <AlertTitle>Error en el monto</AlertTitle>
-                                    <AlertDescription>{formErrors.amount}</AlertDescription>
+                                    <AlertTitle className="text-sm">Error en el monto</AlertTitle>
+                                    <AlertDescription className="text-xs">{formErrors.amount}</AlertDescription>
                                 </Alert>
                             )}
 
-                            <div className="space-y-2">
-                                <Label>Fecha de Pago *</Label>
+                            {/* Fecha de Pago */}
+                            <div className="space-y-1.5">
+                                <Label className="text-sm font-semibold">Fecha de Pago *</Label>
                                 <Input
                                     type="date"
                                     value={paymentForm.paymentDate}
                                     onChange={(e) => setPaymentForm({ ...paymentForm, paymentDate: e.target.value })}
+                                    className="h-10"
                                 />
                             </div>
 
-                            <div className="space-y-4">
+                            {/* Detalles de Pago */}
+                            <div className="space-y-3">
                                 <div className="flex items-center justify-between">
-                                    <Label>Detalles de Pago *</Label>
+                                    <Label className="text-sm font-semibold">Detalles de Pago *</Label>
                                     <Button
                                         type="button"
                                         variant="outline"
                                         size="sm"
                                         onClick={handleAddPaymentDetail}
                                         disabled={remainingPayments === 0}
+                                        className="h-8"
                                     >
-                                        <Plus className="h-4 w-4 mr-1" />
+                                        <Plus className="h-3.5 w-3.5 mr-1" />
                                         Agregar método
                                     </Button>
                                 </div>
 
                                 {paymentDetails.map((detail, index) => (
-                                    <Card key={detail.id} className="relative">
-                                        <CardContent className="p-4 space-y-3">
+                                    <Card key={detail.id} className="relative shadow-sm">
+                                        <CardContent className="p-3 space-y-3">
                                             {paymentDetails.length > 1 && (
                                                 <Button
                                                     type="button"
                                                     variant="ghost"
                                                     size="icon"
-                                                    className="absolute top-2 right-2 h-6 w-6 text-destructive"
+                                                    className="absolute top-2 right-2 h-6 w-6 text-destructive hover:text-destructive"
                                                     onClick={() => handleRemovePaymentDetail(detail.id)}
                                                 >
-                                                    <X className="h-4 w-4" />
+                                                    <X className="h-3.5 w-3.5" />
                                                 </Button>
                                             )}
 
                                             <div className="grid grid-cols-2 gap-3">
-                                                <div className="space-y-2">
-                                                    <Label>Método de Pago *</Label>
+                                                <div className="space-y-1.5">
+                                                    <Label className="text-xs">Método de Pago *</Label>
                                                     <Select
                                                         value={detail.paymentMethod}
                                                         onValueChange={(v) => handlePaymentDetailChange(detail.id, "paymentMethod", v)}
                                                         disabled={remainingPayments === 0}
                                                     >
-                                                        <SelectTrigger>
+                                                        <SelectTrigger className="h-9">
                                                             <SelectValue placeholder="Seleccionar" />
                                                         </SelectTrigger>
                                                         <SelectContent>
@@ -912,8 +920,8 @@ export default function PurchaseOrderPaymentsPage() {
                                                         </SelectContent>
                                                     </Select>
                                                 </div>
-                                                <div className="space-y-2">
-                                                    <Label>Monto *</Label>
+                                                <div className="space-y-1.5">
+                                                    <Label className="text-xs">Monto *</Label>
                                                     <Input
                                                         type="number"
                                                         min="0"
@@ -926,7 +934,7 @@ export default function PurchaseOrderPaymentsPage() {
                                                             handlePaymentDetailChange(detail.id, "amount", value);
                                                         }}
                                                         disabled={remainingPayments === 0}
-                                                        className={formErrors.amount ? "border-red-500" : ""}
+                                                        className={`h-9 ${formErrors.amount ? "border-red-500" : ""}`}
                                                     />
                                                     {detail.amount > maxAllowedAmount && detail.amount > 0 && (
                                                         <p className="text-xs text-red-600">
@@ -937,32 +945,35 @@ export default function PurchaseOrderPaymentsPage() {
                                             </div>
 
                                             {(detail.paymentMethod === "bank_transfer" || detail.paymentMethod === "check") && (
-                                                <div className="space-y-2">
-                                                    <Label>Banco</Label>
+                                                <div className="space-y-1.5">
+                                                    <Label className="text-xs">Banco</Label>
                                                     <Input
                                                         placeholder="Nombre del banco"
                                                         value={detail.bank || ""}
                                                         onChange={(e) => handlePaymentDetailChange(detail.id, "bank", e.target.value)}
+                                                        className="h-9"
                                                     />
                                                 </div>
                                             )}
 
                                             {(detail.paymentMethod === "bank_transfer" || detail.paymentMethod === "credit_card") && (
                                                 <div className="grid grid-cols-2 gap-3">
-                                                    <div className="space-y-2">
-                                                        <Label>Número de Referencia</Label>
+                                                    <div className="space-y-1.5">
+                                                        <Label className="text-xs">Número de Referencia</Label>
                                                         <Input
                                                             placeholder="Referencia"
                                                             value={detail.referenceNumber || ""}
                                                             onChange={(e) => handlePaymentDetailChange(detail.id, "referenceNumber", e.target.value)}
+                                                            className="h-9"
                                                         />
                                                     </div>
-                                                    <div className="space-y-2">
-                                                        <Label>Código de Autorización</Label>
+                                                    <div className="space-y-1.5">
+                                                        <Label className="text-xs">Código de Autorización</Label>
                                                         <Input
                                                             placeholder="Código"
                                                             value={detail.authorizationCode || ""}
                                                             onChange={(e) => handlePaymentDetailChange(detail.id, "authorizationCode", e.target.value)}
+                                                            className="h-9"
                                                         />
                                                     </div>
                                                 </div>
@@ -972,14 +983,15 @@ export default function PurchaseOrderPaymentsPage() {
                                 ))}
                             </div>
 
+                            {/* Documento */}
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label>Tipo de Documento</Label>
+                                <div className="space-y-1.5">
+                                    <Label className="text-sm font-semibold">Tipo de Documento</Label>
                                     <Select
                                         value={paymentForm.documentType}
                                         onValueChange={(v) => setPaymentForm({ ...paymentForm, documentType: v })}
                                     >
-                                        <SelectTrigger>
+                                        <SelectTrigger className="h-10">
                                             <SelectValue placeholder="Seleccionar" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -990,65 +1002,74 @@ export default function PurchaseOrderPaymentsPage() {
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                <div className="space-y-2">
-                                    <Label>Número de Documento</Label>
+                                <div className="space-y-1.5">
+                                    <Label className="text-sm font-semibold">Número de Documento</Label>
                                     <Input
                                         placeholder="Número"
                                         value={paymentForm.documentNumber}
                                         onChange={(e) => setPaymentForm({ ...paymentForm, documentNumber: e.target.value })}
+                                        className="h-10"
                                     />
                                 </div>
                             </div>
 
-                            <div className="space-y-2">
-                                <Label>Notas</Label>
+                            {/* Notas */}
+                            <div className="space-y-1.5">
+                                <Label className="text-sm font-semibold">Notas</Label>
                                 <Textarea
                                     placeholder="Notas adicionales sobre el pago..."
                                     value={paymentForm.notes}
                                     onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
                                     rows={2}
+                                    className="resize-none"
                                 />
                             </div>
 
-                            <Card className={`bg-muted/50 ${formErrors.amount ? 'border-red-500' : ''}`}>
+                            {/* Total a Pagar */}
+                            <Card className={`shadow-sm ${formErrors.amount ? 'border-red-500' : ''}`}>
                                 <CardContent className="p-4">
-                                    <div className="flex justify-between items-center">
+                                    <div className="flex justify-between items-start">
                                         <div>
-                                            <p className="text-sm text-muted-foreground">Total a Pagar</p>
+                                            <p className="text-xs text-muted-foreground">Total a Pagar</p>
                                             <p className={`text-2xl font-bold ${formErrors.amount ? 'text-red-600' : 'text-primary'}`}>
                                                 {formatCurrency(totalPaymentAmount)}
                                             </p>
                                             <p className="text-xs text-muted-foreground mt-1">
-                                                Límite máximo: {formatCurrency(maxAllowedAmount)}
+                                                Límite: {formatCurrency(maxAllowedAmount)}
                                             </p>
                                         </div>
                                         <div className="text-right">
-                                            <p className="text-sm text-muted-foreground">Métodos de pago</p>
-                                            <p className="text-lg font-semibold">{paymentDetails.length}</p>
+                                            <p className="text-xs text-muted-foreground">Métodos de pago</p>
+                                            <p className="text-xl font-semibold">{paymentDetails.length}</p>
                                         </div>
                                     </div>
                                     {maxAllowedAmount > 0 && totalPaymentAmount > 0 && (
                                         <div className="mt-3">
-                                            <Progress value={paymentProgress} className="h-2" />
+                                            <Progress value={paymentProgress} className="h-1.5" />
                                         </div>
                                     )}
                                 </CardContent>
                             </Card>
                         </div>
-                    </ScrollArea>
+                    </div>
 
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => {
-                            setIsPaymentDialogOpen(false);
-                            setFormErrors({});
-                        }}>
+                    {/* Footer */}
+                    <DialogFooter className="shrink-0 border-t bg-background p-4 gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setIsPaymentDialogOpen(false);
+                                setFormErrors({});
+                            }}
+                        >
                             Cancelar
                         </Button>
                         <Button
                             onClick={handleSubmitPayment}
                             disabled={isSubmitting || remainingPayments === 0 || !!formErrors.amount || totalPaymentAmount === 0 || totalPaymentAmount > maxAllowedAmount || paymentDetails.some(d => !d.paymentMethod)}
+                            className="gap-2"
                         >
-                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
                             Registrar Pago
                         </Button>
                     </DialogFooter>
@@ -1056,18 +1077,55 @@ export default function PurchaseOrderPaymentsPage() {
             </Dialog>
 
             <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Eliminar Pago</DialogTitle>
-                        <DialogDescription>
+                <DialogContent
+                    className="max-w-md p-0"
+                    onPointerDownOutside={(e) => e.preventDefault()}
+                    onEscapeKeyDown={(e) => e.preventDefault()}
+                >
+                    <DialogHeader className="p-5 pb-2">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-full bg-red-100 dark:bg-red-900/50">
+                                <Trash2 className="h-5 w-5 text-red-600 dark:text-red-400" />
+                            </div>
+                            <DialogTitle className="text-lg">Eliminar Pago</DialogTitle>
+                        </div>
+                        <DialogDescription className="text-sm mt-2">
                             ¿Estás seguro de que deseas eliminar el pago #{selectedPayment?.paymentNumber}?
                             Esta acción no se puede deshacer.
                         </DialogDescription>
                     </DialogHeader>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>Cancelar</Button>
-                        <Button variant="destructive" onClick={handleDeletePayment}>
-                            Eliminar
+
+                    {/* Información del pago a eliminar */}
+                    {selectedPayment && (
+                        <div className="mx-5 mb-4 p-3 bg-muted/30 rounded-lg space-y-1.5">
+                            <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">Monto:</span>
+                                <span className="font-bold text-red-600">{formatCurrency(selectedPayment.amount)}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">Fecha:</span>
+                                <span>{formatDate(selectedPayment.paymentDate)}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">Método:</span>
+                                <span className="capitalize">{selectedPayment.paymentMethod?.replace('_', ' ')}</span>
+                            </div>
+                            {selectedPayment.referenceNumber && (
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-muted-foreground">Referencia:</span>
+                                    <span className="font-mono text-xs">{selectedPayment.referenceNumber}</span>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    <DialogFooter className="px-5 pb-5 gap-2">
+                        <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+                            Cancelar
+                        </Button>
+                        <Button variant="destructive" onClick={handleDeletePayment} className="gap-2">
+                            <Trash2 className="h-4 w-4" />
+                            Eliminar Pago
                         </Button>
                     </DialogFooter>
                 </DialogContent>

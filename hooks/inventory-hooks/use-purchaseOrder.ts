@@ -1,4 +1,4 @@
-"use client"; 
+"use client";
 
 /**
  * usePurchaseOrder Hook
@@ -20,6 +20,7 @@ interface UsePurchaseOrdersReturn extends UsePurchaseOrdersState {
     createPurchaseOrder: (purchaseOrderData: CreatePurchaseOrderPayload) => Promise<void>;
     updatePurchaseOrder: (id: string, purchaseOrderData: PurchaseOrderChangeStatus) => Promise<void>;
     receivePurchaseOrder: (id: string, receivedItems: PurchaseOrderReceivedItems) => Promise<void>;
+    removeItemDetail: (orderId: string, detailId: string) => Promise<PurchaseOrder>;
 }
 
 export function usePurchaseOrders(): UsePurchaseOrdersReturn {
@@ -78,10 +79,10 @@ export function usePurchaseOrders(): UsePurchaseOrdersReturn {
 
         try {
             const response = await purchaseOrderService.updatePurchaseOrder(id, purchaseOrderData);
-            setState((prev) => ({ 
-                ...prev, 
-                purchaseOrders: prev.purchaseOrders.map(po => po.id === id ? response.data : po), 
-                isLoading: false 
+            setState((prev) => ({
+                ...prev,
+                purchaseOrders: prev.purchaseOrders.map(po => po.id === id ? response.data : po),
+                isLoading: false
             }));
         } catch (error) {
             const apiError = error as ApiError;
@@ -94,14 +95,36 @@ export function usePurchaseOrders(): UsePurchaseOrdersReturn {
 
         try {
             await purchaseOrderService.receivePurchaseOrder(id, receivedItems);
-            setState((prev) => ({ 
-                ...prev, 
-                purchaseOrders: prev.purchaseOrders.map(po => po.id === id ? { ...po, status: "received" } : po), 
-                isLoading: false 
+            setState((prev) => ({
+                ...prev,
+                purchaseOrders: prev.purchaseOrders.map(po => po.id === id ? { ...po, status: "received" } : po),
+                isLoading: false
             }));
         } catch (error) {
             const apiError = error as ApiError;
             setState((prev) => ({ ...prev, error: apiError.message, isLoading: false }));
+        }
+    }, []);
+
+    const removeItemDetail = useCallback(async (orderId: string, detailId: string): Promise<PurchaseOrder> => {
+        setState((prev) => ({ ...prev, isLoading: true, error: null }));
+
+        try {
+            const response = await purchaseOrderService.removeItemDetail(orderId, detailId);
+            setState((prev) => ({
+                ...prev,
+                purchaseOrders: prev.purchaseOrders.map(po =>
+                    po.id === orderId
+                        ? response.data
+                        : po
+                ),
+                isLoading: false
+            }));
+            return response.data;
+        } catch (error) {
+            const apiError = error as ApiError;
+            setState((prev) => ({ ...prev, error: apiError.message, isLoading: false }));
+            throw apiError;
         }
     }, []);
 
@@ -115,6 +138,7 @@ export function usePurchaseOrders(): UsePurchaseOrdersReturn {
         findById,
         createPurchaseOrder,
         updatePurchaseOrder,
-        receivePurchaseOrder
+        receivePurchaseOrder,
+        removeItemDetail
     };
 }

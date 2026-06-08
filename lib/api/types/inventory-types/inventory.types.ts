@@ -127,7 +127,11 @@ export interface PurchaseOrder {
     orderDate: string; // ISO date
     expectedDate: string; // ISO date
     status: "draft" | "pending" | "approved" | "received" | "cancelled";
+    subtotal?: number;
+    discount?: number;
+    shippingCost?: number;
     totalAmount: number;
+    paymentTerms?: "immediate" | "one_payment" | "two_payments" | "three_payments";
     notes: string;
     createdBy: string;
     items: PurchaseOrderItem[];

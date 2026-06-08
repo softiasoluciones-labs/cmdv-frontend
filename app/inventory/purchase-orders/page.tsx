@@ -155,6 +155,7 @@ export default function PurchaseOrdersPage() {
     createPurchaseOrder,
     updatePurchaseOrder,
     receivePurchaseOrder,
+    removeItemDetail
   } = usePurchaseOrders();
 
   const { suppliers } = useSuppliers();
@@ -192,7 +193,7 @@ export default function PurchaseOrdersPage() {
     discount: 0,
     shippingCost: 0,
     notes: "",
-    status: "pending",
+    status: "draft",
   });
 
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
@@ -277,6 +278,8 @@ export default function PurchaseOrdersPage() {
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
+  const isEditingExistingOrder = Boolean(selectedOrder);
+  const canEditDraftDetails = !selectedOrder || selectedOrder.status === "draft";
 
   // Filtrar productos disponibles
   const availableProducts = useMemo(() => {
@@ -383,21 +386,27 @@ export default function PurchaseOrdersPage() {
     setIsItemsDialogOpen(true);
   };
 
-  const handleEditOrder = (order: any) => {
-    setSelectedOrder(order);
+  const handleEditOrder = async (order: any) => {
+    const fullOrder = await findById(order.id);
+    if (!fullOrder) {
+      alert("No se pudo cargar la información actualizada de la orden.");
+      return;
+    }
+
+    setSelectedOrder(fullOrder);
     setOrderForm({
-      supplierId: order.supplierId,
-      warehouseId: order.warehouseId,
-      orderDate: order.orderDate?.split("T")[0] || new Date().toISOString().split("T")[0],
-      expectedDate: order.expectedDate?.split("T")[0] || "",
-      paymentTerms: order.paymentTerms || "immediate",
-      discount: order.discount || 0,
-      shippingCost: order.shippingCost || 0,
-      notes: order.notes || "",
-      status: order.status,
+      supplierId: fullOrder.supplierId,
+      warehouseId: fullOrder.warehouseId,
+      orderDate: fullOrder.orderDate?.split("T")[0] || new Date().toISOString().split("T")[0],
+      expectedDate: fullOrder.expectedDate?.split("T")[0] || "",
+      paymentTerms: fullOrder.paymentTerms || "immediate",
+      discount: fullOrder.discount || 0,
+      shippingCost: fullOrder.shippingCost || 0,
+      notes: fullOrder.notes || "",
+      status: fullOrder.status,
     });
     setOrderItems(
-      (order.items || []).map((item: any) => ({
+      (fullOrder.items || []).map((item: any) => ({
         ...item,
         totalCost: item.quantity * item.unitCost,
       })),
@@ -489,9 +498,35 @@ export default function PurchaseOrdersPage() {
     setOrderItems(updatedItems);
   };
 
-  const handleRemoveItem = (index: number) => {
-    const updatedItems = orderItems.filter((_, i) => i !== index);
-    setOrderItems(updatedItems);
+  const handleRemoveItem = async (index: number, detailId?: string) => {
+    if (detailId && selectedOrder) {
+      if (selectedOrder.status !== "draft") {
+        alert("Solo puedes eliminar productos de órdenes en estado borrador.");
+        return;
+      }
+
+      if (!confirm('¿Estás seguro de que deseas eliminar este producto de la orden?')) {
+        return;
+      }
+
+      try {
+        const updatedOrder = await removeItemDetail(selectedOrder.id, detailId);
+        setSelectedOrder(updatedOrder);
+        setOrderItems(
+          (updatedOrder.items || []).map((item: any) => ({
+            ...item,
+            totalCost: item.quantity * item.unitCost,
+          })),
+        );
+      } catch (error) {
+        console.error('Error removing item:', error);
+        const message = error instanceof Error ? error.message : 'Error al eliminar el producto';
+        alert(message);
+      }
+    } else {
+      const updatedItems = orderItems.filter((_, i) => i !== index);
+      setOrderItems(updatedItems);
+    }
   };
 
   const handleSaveOrder = async () => {
@@ -536,7 +571,7 @@ export default function PurchaseOrdersPage() {
         discount: 0,
         shippingCost: 0,
         notes: "",
-        status: "pending",
+        status: "draft",
       });
       setOrderItems([]);
       await fetchPurchaseOrders();
@@ -603,6 +638,17 @@ export default function PurchaseOrdersPage() {
     return 0;
   };
 
+  const StatusBadge = ({ status }: { status: string }) => {
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
+    const Icon = config.icon;
+    return (
+      <Badge className={`gap-1 ${config.color} border`}>
+        <Icon className="h-3 w-3" />
+        {config.label}
+      </Badge>
+    );
+  };
+
   if (isLoading && !purchaseOrders.length) {
     return (
       <DashboardLayout>
@@ -666,7 +712,7 @@ export default function PurchaseOrdersPage() {
                       discount: 0,
                       shippingCost: 0,
                       notes: "",
-                      status: "pending",
+                      status: "draft",
                     });
                     setOrderItems([]);
                   }}
@@ -676,20 +722,28 @@ export default function PurchaseOrdersPage() {
                   Nueva Orden
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>{selectedOrder ? "Editar Orden" : "Crear Nueva Orden de Compra"}</DialogTitle>
-                  <DialogDescription>
+
+              <DialogContent
+                className="w-[95vw] max-w-[1600px] h-[92vh] p-0 flex flex-col"
+                onPointerDownOutside={(e) => e.preventDefault()}
+                onEscapeKeyDown={(e) => e.preventDefault()}
+                onInteractOutside={(e) => e.preventDefault()}
+              >
+                <DialogHeader className="p-6 pb-4 shrink-0 border-b">
+                  <DialogTitle className="text-2xl">{selectedOrder ? "Editar Orden" : "Crear Nueva Orden de Compra"}</DialogTitle>
+                  <DialogDescription className="text-base">
                     Complete la información de la orden de compra
                   </DialogDescription>
                 </DialogHeader>
-                <ScrollArea className="h-[65vh] pr-4">
+
+                {/* Scroll solo para el contenido, no para todo */}
+                <div className="flex-1 overflow-y-auto px-6 py-4">
                   <div className="space-y-6">
                     {/* Información básica */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-4 md:grid-cols-2">
                       <div className="space-y-2">
                         <Label>Proveedor *</Label>
-                        <Select value={orderForm.supplierId} onValueChange={(value) => setOrderForm({ ...orderForm, supplierId: value })}>
+                        <Select value={orderForm.supplierId} onValueChange={(value) => setOrderForm({ ...orderForm, supplierId: value })} disabled={isEditingExistingOrder}>
                           <SelectTrigger>
                             <SelectValue placeholder="Seleccionar proveedor" />
                           </SelectTrigger>
@@ -704,7 +758,7 @@ export default function PurchaseOrdersPage() {
                       </div>
                       <div className="space-y-2">
                         <Label>Bodega Destino *</Label>
-                        <Select value={orderForm.warehouseId} onValueChange={(value) => setOrderForm({ ...orderForm, warehouseId: value })}>
+                        <Select value={orderForm.warehouseId} onValueChange={(value) => setOrderForm({ ...orderForm, warehouseId: value })} disabled={isEditingExistingOrder}>
                           <SelectTrigger>
                             <SelectValue placeholder="Seleccionar bodega" />
                           </SelectTrigger>
@@ -719,21 +773,21 @@ export default function PurchaseOrdersPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-4 md:grid-cols-2">
                       <div className="space-y-2">
                         <Label>Fecha de Orden *</Label>
-                        <Input type="date" value={orderForm.orderDate} onChange={(e) => setOrderForm({ ...orderForm, orderDate: e.target.value })} />
+                        <Input type="date" value={orderForm.orderDate} onChange={(e) => setOrderForm({ ...orderForm, orderDate: e.target.value })} disabled={isEditingExistingOrder} />
                       </div>
                       <div className="space-y-2">
                         <Label>Fecha de entrega esperada *</Label>
-                        <Input type="date" value={orderForm.expectedDate} onChange={(e) => setOrderForm({ ...orderForm, expectedDate: e.target.value })} min={orderForm.orderDate} />
+                        <Input type="date" value={orderForm.expectedDate} onChange={(e) => setOrderForm({ ...orderForm, expectedDate: e.target.value })} min={orderForm.orderDate} disabled={isEditingExistingOrder} />
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid gap-4 md:grid-cols-3">
                       <div className="space-y-2">
                         <Label>Términos de Pago *</Label>
-                        <Select value={orderForm.paymentTerms} onValueChange={(value) => setOrderForm({ ...orderForm, paymentTerms: value as any })}>
+                        <Select value={orderForm.paymentTerms} onValueChange={(value) => setOrderForm({ ...orderForm, paymentTerms: value as any })} disabled={isEditingExistingOrder}>
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
@@ -747,34 +801,38 @@ export default function PurchaseOrdersPage() {
                       </div>
                       <div className="space-y-2">
                         <Label>Descuento (Q)</Label>
-                        <Input type="number" min="0" step="0.01" value={orderForm.discount} onChange={(e) => setOrderForm({ ...orderForm, discount: parseFloat(e.target.value) || 0 })} />
+                        <Input type="number" min="0" step="0.01" value={orderForm.discount} onChange={(e) => setOrderForm({ ...orderForm, discount: parseFloat(e.target.value) || 0 })} disabled={isEditingExistingOrder} />
                       </div>
                       <div className="space-y-2">
                         <Label>Costo de Envío (Q)</Label>
-                        <Input type="number" min="0" step="0.01" value={orderForm.shippingCost} onChange={(e) => setOrderForm({ ...orderForm, shippingCost: parseFloat(e.target.value) || 0 })} />
+                        <Input type="number" min="0" step="0.01" value={orderForm.shippingCost} onChange={(e) => setOrderForm({ ...orderForm, shippingCost: parseFloat(e.target.value) || 0 })} disabled={isEditingExistingOrder} />
                       </div>
                     </div>
 
                     <div className="space-y-2">
                       <Label>Notas</Label>
-                      <Textarea placeholder="Notas adicionales sobre esta orden..." value={orderForm.notes} onChange={(e) => setOrderForm({ ...orderForm, notes: e.target.value })} rows={2} />
+                      <Textarea placeholder="Notas adicionales sobre esta orden..." value={orderForm.notes} onChange={(e) => setOrderForm({ ...orderForm, notes: e.target.value })} rows={2} disabled={isEditingExistingOrder} />
                     </div>
 
                     <Separator />
 
                     {/* Sección de productos */}
                     <div className="space-y-4">
-                      <div className="flex items-center justify-between">
+                      <div className="space-y-4">
                         <div>
                           <h3 className="text-lg font-semibold">Productos de la Orden</h3>
-                          <p className="text-sm text-muted-foreground">Agrega los productos que deseas solicitar</p>
+                          <p className="text-sm text-muted-foreground">
+                            {canEditDraftDetails
+                              ? "Agrega o elimina productos mientras la orden esté en borrador"
+                              : "La edición de productos solo está disponible para órdenes en borrador"}
+                          </p>
                         </div>
-                        <div className="flex gap-3">
+                        <div className="flex gap-3 flex-wrap">
                           <div className="relative w-64">
                             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                            <Input placeholder="Buscar producto..." value={productSearch} onChange={(e) => setProductSearch(e.target.value)} className="pl-9" />
+                            <Input placeholder="Buscar producto..." value={productSearch} onChange={(e) => setProductSearch(e.target.value)} className="pl-9" disabled={!canEditDraftDetails} />
                           </div>
-                          <Select value={selectedProductId} onValueChange={setSelectedProductId}>
+                          <Select value={selectedProductId} onValueChange={setSelectedProductId} disabled={!canEditDraftDetails}>
                             <SelectTrigger className="w-64">
                               <SelectValue placeholder="Seleccionar producto" />
                             </SelectTrigger>
@@ -789,7 +847,7 @@ export default function PurchaseOrdersPage() {
                               ))}
                             </SelectContent>
                           </Select>
-                          <Button type="button" onClick={handleAddProduct} disabled={!selectedProductId}>
+                          <Button type="button" onClick={handleAddProduct} disabled={!selectedProductId || !canEditDraftDetails}>
                             <Plus className="h-4 w-4 mr-2" />
                             Agregar
                           </Button>
@@ -805,17 +863,17 @@ export default function PurchaseOrdersPage() {
                           </CardContent>
                         </Card>
                       ) : (
-                        <div className="rounded-md border">
+                        <div className="rounded-md border overflow-x-auto">
                           <Table>
                             <TableHeader>
                               <TableRow className="bg-muted/50">
-                                <TableHead className="w-[300px]">Producto</TableHead>
-                                <TableHead className="text-right w-[100px]">Cantidad</TableHead>
-                                <TableHead className="text-right w-[120px]">Costo Unitario</TableHead>
-                                <TableHead className="text-right w-[120px]">Total</TableHead>
-                                <TableHead className="w-[100px]">Lote</TableHead>
-                                <TableHead className="w-[120px]">Vencimiento</TableHead>
-                                <TableHead className="w-[50px]"></TableHead>
+                                <TableHead className="min-w-[300px]">Producto</TableHead>
+                                <TableHead className="text-right min-w-[100px]">Cantidad</TableHead>
+                                <TableHead className="text-right min-w-[120px]">Costo Unitario</TableHead>
+                                <TableHead className="text-right min-w-[120px]">Total</TableHead>
+                                <TableHead className="min-w-[100px]">Lote</TableHead>
+                                <TableHead className="min-w-[120px]">Vencimiento</TableHead>
+                                <TableHead className="min-w-[50px]"></TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -828,20 +886,20 @@ export default function PurchaseOrdersPage() {
                                     </div>
                                   </TableCell>
                                   <TableCell className="text-right">
-                                    <Input type="number" min="1" value={item.quantity} onChange={(e) => handleUpdateItem(index, "quantity", e.target.value)} className="w-20 text-right" />
+                                    <Input type="number" min="1" value={item.quantity} onChange={(e) => handleUpdateItem(index, "quantity", e.target.value)} className="w-20 text-right" disabled={!canEditDraftDetails} />
                                   </TableCell>
                                   <TableCell className="text-right">
-                                    <Input type="number" min="0" step="0.01" value={item.unitCost} onChange={(e) => handleUpdateItem(index, "unitCost", e.target.value)} className="w-28 text-right" />
+                                    <Input type="number" min="0" step="0.01" value={item.unitCost} onChange={(e) => handleUpdateItem(index, "unitCost", e.target.value)} className="w-28 text-right" disabled={!canEditDraftDetails} />
                                   </TableCell>
                                   <TableCell className="text-right font-medium">Q{item.totalCost.toFixed(2)}</TableCell>
                                   <TableCell>
-                                    <Input placeholder="Lote" value={item.batchNumber || ""} onChange={(e) => handleUpdateItem(index, "batchNumber", e.target.value)} className="w-28" />
+                                    <Input placeholder="Lote" value={item.batchNumber || ""} onChange={(e) => handleUpdateItem(index, "batchNumber", e.target.value)} className="w-28" disabled={!canEditDraftDetails} />
                                   </TableCell>
                                   <TableCell>
-                                    <Input type="date" value={item.expirationDate || ""} onChange={(e) => handleUpdateItem(index, "expirationDate", e.target.value)} className="w-32" />
+                                    <Input type="date" value={item.expirationDate || ""} onChange={(e) => handleUpdateItem(index, "expirationDate", e.target.value)} className="w-32" disabled={!canEditDraftDetails} />
                                   </TableCell>
                                   <TableCell>
-                                    <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(index)} className="text-destructive hover:text-destructive">
+                                    <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(index, item.id)} className="text-destructive hover:text-destructive" disabled={!canEditDraftDetails}>
                                       <Trash className="h-4 w-4" />
                                     </Button>
                                   </TableCell>
@@ -856,7 +914,7 @@ export default function PurchaseOrdersPage() {
                       {orderItems.length > 0 && (
                         <Card className="bg-muted/50">
                           <CardContent className="p-4">
-                            <div className="flex justify-between items-start">
+                            <div className="flex justify-between items-start flex-wrap gap-4">
                               <div>
                                 <p className="text-sm text-muted-foreground">Total de productos</p>
                                 <p className="text-lg font-semibold">{orderItems.length} items</p>
@@ -890,11 +948,23 @@ export default function PurchaseOrdersPage() {
                       )}
                     </div>
                   </div>
-                </ScrollArea>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsOrderDialogOpen(false)}>Cancelar</Button>
-                  <Button onClick={handleSaveOrder} disabled={!orderForm.supplierId || !orderForm.warehouseId || orderItems.length === 0}>
-                    {selectedOrder ? "Actualizar Orden" : "Crear Orden"}
+                </div>
+
+                {/* Footer siempre visible */}
+                <DialogFooter className="shrink-0 border-t bg-background p-6">
+                  {isEditingExistingOrder && (
+                    <p className="mr-auto text-sm text-muted-foreground">
+                      La eliminación de productos en borrador se guarda automáticamente.
+                    </p>
+                  )}
+                  <Button variant="outline" onClick={() => setIsOrderDialogOpen(false)}>
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={handleSaveOrder}
+                    disabled={isEditingExistingOrder || !orderForm.supplierId || !orderForm.warehouseId || orderItems.length === 0}
+                  >
+                    {selectedOrder ? "Actualización no disponible" : "Crear Orden"}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -1220,7 +1290,7 @@ export default function PurchaseOrdersPage() {
                                   <span className="font-bold">Q{(order.totalAmount || 0).toLocaleString("es-GT", { minimumFractionDigits: 2 })}</span>
                                   <div className="flex items-center gap-1 mt-1 w-24">
                                     <Progress value={getReceivedPercentage(order)} className="h-1.5 flex-1" />
-                                    <span className="text-xs text-muted-foreground">{getReceivedPercentage(order)}%</span>
+                                    <span className="text-xs text-muted-foreground">{Math.round(getReceivedPercentage(order))}%</span>
                                   </div>
                                 </div>
                               </TableCell>
@@ -1256,7 +1326,7 @@ export default function PurchaseOrdersPage() {
                                     </TooltipProvider>
                                   )}
 
-                                  {["pending", "approved"].includes(order.status) && (
+                                  {order.status === "approved" && (
                                     <TooltipProvider>
                                       <Tooltip>
                                         <TooltipTrigger asChild>
@@ -1269,7 +1339,7 @@ export default function PurchaseOrdersPage() {
                                     </TooltipProvider>
                                   )}
 
-                                  {["draft", "pending"].includes(order.status) && (
+                                  {order.status === "draft" && (
                                     <TooltipProvider>
                                       <Tooltip>
                                         <TooltipTrigger asChild>
@@ -1298,12 +1368,12 @@ export default function PurchaseOrdersPage() {
                                           <CheckCircle className="mr-2 h-4 w-4" /> Aprobar Orden
                                         </DropdownMenuItem>
                                       )}
-                                      {["pending", "approved"].includes(order.status) && (
+                                      {order.status === "approved" && (
                                         <DropdownMenuItem onClick={() => handleReceiveOrder(order)}>
                                           <PackageCheck className="mr-2 h-4 w-4" /> Recibir Orden
                                         </DropdownMenuItem>
                                       )}
-                                      {["draft", "pending"].includes(order.status) && (
+                                      {order.status === "draft" && (
                                         <DropdownMenuItem onClick={() => handleEditOrder(order)}>
                                           <Edit className="mr-2 h-4 w-4" /> Editar
                                         </DropdownMenuItem>
@@ -1567,92 +1637,167 @@ export default function PurchaseOrdersPage() {
 
         {/* Dialog para Recepción de Orden */}
         <Dialog open={isReceiptDialogOpen} onOpenChange={setIsReceiptDialogOpen}>
-          <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogContent
+            className="w-[95vw] max-w-[1200px] h-[85vh] p-0 flex flex-col"
+            onPointerDownOutside={(e) => e.preventDefault()}
+            onEscapeKeyDown={(e) => e.preventDefault()}
+          >
             {selectedOrderForReceipt && (
               <>
-                <DialogHeader>
-                  <DialogTitle>Recepción de Orden</DialogTitle>
-                  <DialogDescription>
-                    Orden: <span className="font-mono">{selectedOrderForReceipt.orderNumber}</span> •
+                <DialogHeader className="p-5 pb-3 shrink-0 border-b">
+                  <DialogTitle className="text-xl">Recepción de Orden</DialogTitle>
+                  <DialogDescription className="text-sm">
+                    Orden: <span className="font-mono font-semibold">{selectedOrderForReceipt.orderNumber}</span> •
                     Proveedor: <span className="font-medium">{suppliers.find((s) => s.id === selectedOrderForReceipt.supplierId)?.name}</span>
                   </DialogDescription>
                 </DialogHeader>
 
-                <Alert>
-                  <PackageCheck className="h-4 w-4" />
-                  <AlertTitle>Instrucciones para recepción</AlertTitle>
-                  <AlertDescription>
-                    Registra la cantidad recibida de cada producto. Asegúrate de verificar los números de lote y fechas de vencimiento.
-                  </AlertDescription>
-                </Alert>
+                {/* Scrollable content */}
+                <div className="flex-1 overflow-y-auto px-5 py-4">
+                  <div className="space-y-4">
+                    {/* Alerta de instrucciones */}
+                    <Alert className="py-2">
+                      <PackageCheck className="h-4 w-4" />
+                      <AlertTitle className="text-sm font-semibold">Instrucciones para recepción</AlertTitle>
+                      <AlertDescription className="text-xs">
+                        Registra la cantidad recibida de cada producto. Asegúrate de verificar los números de lote y fechas de vencimiento.
+                      </AlertDescription>
+                    </Alert>
 
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/50">
-                        <TableHead className="w-[350px]">Producto</TableHead>
-                        <TableHead className="text-right w-[100px]">Ordenado</TableHead>
-                        <TableHead className="text-right w-[120px]">Recibido</TableHead>
-                        <TableHead className="w-[150px]">Lote</TableHead>
-                        <TableHead className="w-[150px]">Vencimiento</TableHead>
-                        <TableHead className="text-right w-[100px]">Estado</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {(selectedOrderForReceipt.items || []).map((item: any, index: number) => {
-                        const receivedItem = receiptForm.receivedItems.find((ri) => ri.productId === item.productId);
-                        const isComplete = receivedItem && receivedItem.quantity >= item.quantity;
-                        const isPartial = receivedItem && receivedItem.quantity > 0 && receivedItem.quantity < item.quantity;
-                        return (
-                          <TableRow key={item.id}>
-                            <TableCell>
-                              <div className="flex flex-col">
-                                <span className="font-medium">{item.productName}</span>
-                                <span className="text-xs text-muted-foreground font-mono">{item.productCode}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="font-medium">{item.quantity}</div>
-                              <div className="text-xs text-muted-foreground">Q{item.unitCost?.toFixed(2) || 0}/unit</div>
-                            </TableCell>
-                            <TableCell>
-                              <Input type="number" min="0" max={item.quantity} value={receivedItem?.quantity || 0} onChange={(e) => handleReceiptItemChange(index, "quantity", parseInt(e.target.value) || 0)} className="w-24 ml-auto" />
-                            </TableCell>
-                            <TableCell>
-                              <Input placeholder="Número de lote" value={receivedItem?.batchNumber || ""} onChange={(e) => handleReceiptItemChange(index, "batchNumber", e.target.value)} />
-                            </TableCell>
-                            <TableCell>
-                              <Input type="date" value={receivedItem?.expirationDate || ""} onChange={(e) => handleReceiptItemChange(index, "expirationDate", e.target.value)} />
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {isComplete ? (
-                                <Badge className="gap-1 bg-green-500/10 text-green-600">
-                                  <Check className="h-3 w-3" /> Completo
-                                </Badge>
-                              ) : isPartial ? (
-                                <Badge className="gap-1 bg-yellow-500/10 text-yellow-600">
-                                  <Clock className="h-3 w-3" /> Parcial
-                                </Badge>
-                              ) : (
-                                <Badge variant="outline" className="text-muted-foreground">Pendiente</Badge>
-                              )}
-                            </TableCell>
+                    {/* Tabla de productos */}
+                    <div className="rounded-md border overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-slate-100 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800/50">
+                            <TableHead className="min-w-[250px] text-xs">Producto</TableHead>
+                            <TableHead className="text-right min-w-[80px] text-xs">Ordenado</TableHead>
+                            <TableHead className="text-right min-w-[100px] text-xs">Recibido</TableHead>
+                            <TableHead className="min-w-[120px] text-xs">Lote</TableHead>
+                            <TableHead className="min-w-[120px] text-xs">Vencimiento</TableHead>
+                            <TableHead className="text-right min-w-[90px] text-xs">Estado</TableHead>
                           </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
+                        </TableHeader>
+                        <TableBody>
+                          {(selectedOrderForReceipt.items || []).map((item: any, index: number) => {
+                            const receivedItem = receiptForm.receivedItems.find((ri) => ri.productId === item.productId);
+                            const isComplete = receivedItem && receivedItem.quantity >= item.quantity;
+                            const isPartial = receivedItem && receivedItem.quantity > 0 && receivedItem.quantity < item.quantity;
+                            return (
+                              <TableRow key={item.id} className={cn(
+                                "hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors",
+                                index % 2 === 0 ? "bg-white dark:bg-slate-950/50" : "bg-slate-50/50 dark:bg-slate-900/30"
+                              )}>
+                                <TableCell className="py-2">
+                                  <div>
+                                    <div className="font-medium text-sm">{item.productName}</div>
+                                    <div className="text-xs text-muted-foreground font-mono">Código: {item.productCode}</div>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-right py-2">
+                                  <div className="text-sm font-medium">{item.quantity}</div>
+                                  <div className="text-xs text-muted-foreground">Q{(item.unitCost || 0).toFixed(2)}/u</div>
+                                </TableCell>
+                                <TableCell className="py-2">
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    max={item.quantity}
+                                    value={receivedItem?.quantity || 0}
+                                    onChange={(e) => handleReceiptItemChange(index, "quantity", parseInt(e.target.value) || 0)}
+                                    className="w-20 h-8 text-sm text-right ml-auto"
+                                  />
+                                </TableCell>
+                                <TableCell className="py-2">
+                                  <Input
+                                    placeholder="Lote"
+                                    value={receivedItem?.batchNumber || ""}
+                                    onChange={(e) => handleReceiptItemChange(index, "batchNumber", e.target.value)}
+                                    className="w-28 h-8 text-sm"
+                                  />
+                                </TableCell>
+                                <TableCell className="py-2">
+                                  <Input
+                                    type="date"
+                                    value={receivedItem?.expirationDate || ""}
+                                    onChange={(e) => handleReceiptItemChange(index, "expirationDate", e.target.value)}
+                                    className="w-32 h-8 text-sm"
+                                  />
+                                </TableCell>
+                                <TableCell className="text-right py-2">
+                                  {isComplete ? (
+                                    <Badge className="gap-1 bg-green-500/10 text-green-600 border-green-200 text-xs">
+                                      <Check className="h-2.5 w-2.5" /> Completo
+                                    </Badge>
+                                  ) : isPartial ? (
+                                    <Badge className="gap-1 bg-yellow-500/10 text-yellow-600 border-yellow-200 text-xs">
+                                      <Clock className="h-2.5 w-2.5" /> Parcial
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="outline" className="text-muted-foreground text-xs">
+                                      Pendiente
+                                    </Badge>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    {/* Resumen de cantidades recibidas */}
+                    <Card className="bg-muted/30">
+                      <CardContent className="p-3">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-muted-foreground">Total de productos:</span>
+                          <span className="font-medium">{(selectedOrderForReceipt.items || []).length} items</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm mt-1">
+                          <span className="text-muted-foreground">Estado general:</span>
+                          {(() => {
+                            const totalItems = (selectedOrderForReceipt.items || []).length;
+                            const completedItems = (selectedOrderForReceipt.items || []).filter((item: any, idx: number) => {
+                              const receivedItem = receiptForm.receivedItems.find((ri) => ri.productId === item.productId);
+                              return receivedItem && receivedItem.quantity >= item.quantity;
+                            }).length;
+                            const partialItems = (selectedOrderForReceipt.items || []).filter((item: any, idx: number) => {
+                              const receivedItem = receiptForm.receivedItems.find((ri) => ri.productId === item.productId);
+                              return receivedItem && receivedItem.quantity > 0 && receivedItem.quantity < item.quantity;
+                            }).length;
+
+                            if (completedItems === totalItems && totalItems > 0) {
+                              return <Badge className="bg-green-500/10 text-green-600 text-xs">Recepción completa</Badge>;
+                            } else if (completedItems > 0 || partialItems > 0) {
+                              return <Badge className="bg-yellow-500/10 text-yellow-600 text-xs">Recepción parcial</Badge>;
+                            } else {
+                              return <Badge variant="outline" className="text-xs">Pendiente</Badge>;
+                            }
+                          })()}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Notas de recepción */}
+                    <div className="space-y-1.5">
+                      <Label className="text-sm font-semibold">Notas de Recepción</Label>
+                      <Textarea
+                        placeholder="Describe el estado de la entrega, observaciones sobre los productos..."
+                        value={receiptForm.notes}
+                        onChange={(e) => setReceiptForm({ ...receiptForm, notes: e.target.value })}
+                        rows={2}
+                        className="text-sm resize-none"
+                      />
+                    </div>
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Notas de Recepción</Label>
-                  <Textarea placeholder="Describe el estado de la entrega, observaciones sobre los productos..." value={receiptForm.notes} onChange={(e) => setReceiptForm({ ...receiptForm, notes: e.target.value })} rows={3} />
-                </div>
-
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsReceiptDialogOpen(false)}>Cancelar</Button>
-                  <Button onClick={handleSubmitReceipt}>
-                    <PackageCheck className="mr-2 h-4 w-4" />
+                {/* Footer siempre visible */}
+                <DialogFooter className="shrink-0 border-t bg-background p-4">
+                  <Button variant="outline" onClick={() => setIsReceiptDialogOpen(false)}>
+                    Cancelar
+                  </Button>
+                  <Button onClick={handleSubmitReceipt} className="gap-2">
+                    <PackageCheck className="h-4 w-4" />
                     Confirmar Recepción
                   </Button>
                 </DialogFooter>
@@ -1663,85 +1808,300 @@ export default function PurchaseOrdersPage() {
 
         {/* Dialog para Ver Detalles de Orden */}
         <Dialog open={isItemsDialogOpen} onOpenChange={setIsItemsDialogOpen}>
-          <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogContent
+            className="w-[95vw] max-w-[1400px] h-[85vh] p-0 flex flex-col"
+            onPointerDownOutside={(e) => e.preventDefault()}
+            onEscapeKeyDown={(e) => e.preventDefault()}
+          >
             {selectedOrder && (
               <>
-                <DialogHeader>
-                  <DialogTitle>Detalles de Orden</DialogTitle>
-                  <DialogDescription>Orden: <span className="font-mono">{selectedOrder.orderNumber}</span></DialogDescription>
+                <DialogHeader className="p-5 pb-3 shrink-0 border-b">
+                  <DialogTitle className="text-xl">Detalles de Orden</DialogTitle>
+                  <DialogDescription className="text-sm">
+                    Orden: <span className="font-mono font-semibold">{selectedOrder.orderNumber}</span>
+                  </DialogDescription>
                 </DialogHeader>
 
-                <div className="grid grid-cols-2 gap-6">
-                  <div>
-                    <h4 className="font-medium mb-2">Información General</h4>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between"><span className="text-muted-foreground">Proveedor:</span><span className="font-medium">{suppliers.find((s) => s.id === selectedOrder.supplierId)?.name}</span></div>
-                      <div className="flex justify-between"><span className="text-muted-foreground">Bodega Destino:</span><span className="font-medium">{selectedOrder.warehouseName}</span></div>
-                      <div className="flex justify-between"><span className="text-muted-foreground">Estado:</span><Badge className={`gap-1 ${getStatusConfig(selectedOrder.status).color} border`}>{getStatusConfig(selectedOrder.status).label}</Badge></div>
+                {/* Scrollable content */}
+                <div className="flex-1 overflow-y-auto px-5 py-4">
+                  <div className="space-y-5">
+                    {/* Información General y Fechas */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      <div className="grid grid-cols-2 gap-3">
+                        {/* Información General - Diseño más limpio */}
+                        <Card className="overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                          <div className="border-l-4 border-blue-500 bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20">
+                            <CardHeader className="pb-2 pt-3 px-4">
+                              <CardTitle className="text-xs font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-400 flex items-center gap-1.5">
+                                <Building2 className="h-3 w-3" />
+                                Información General
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className="px-4 pb-3 space-y-1.5">
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs text-muted-foreground">Proveedor</span>
+                                <span className="text-xs font-medium truncate ml-2">{suppliers.find((s) => s.id === selectedOrder.supplierId)?.name}</span>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs text-muted-foreground">Bodega</span>
+                                <span className="text-xs font-medium">{selectedOrder.warehouseName}</span>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs text-muted-foreground">Términos</span>
+                                <Badge variant="outline" className="capitalize text-[10px] px-1.5 py-0">
+                                  {selectedOrder.paymentTerms?.replace('_', ' ') || 'No definido'}
+                                </Badge>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs text-muted-foreground">Estado</span>
+                                <StatusBadge status={selectedOrder.status} />
+                              </div>
+                            </CardContent>
+                          </div>
+                        </Card>
+
+                        {/* Fechas - Diseño más limpio */}
+                        <Card className="overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                          <div className="border-l-4 border-purple-500 bg-gradient-to-r from-purple-50/50 to-pink-50/50 dark:from-purple-950/20 dark:to-pink-950/20">
+                            <CardHeader className="pb-2 pt-3 px-4">
+                              <CardTitle className="text-xs font-semibold uppercase tracking-wide text-purple-700 dark:text-purple-400 flex items-center gap-1.5">
+                                <Calendar className="h-3 w-3" />
+                                Fechas
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className="px-4 pb-3 space-y-1.5">
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs text-muted-foreground">Orden</span>
+                                <span className="text-xs font-medium">
+                                  {selectedOrder.orderDate ? new Date(selectedOrder.orderDate).toLocaleDateString("es-GT", {
+                                    year: 'numeric',
+                                    month: '2-digit',
+                                    day: '2-digit'
+                                  }) : '(sin fecha)'}
+                                </span>
+                              </div>
+
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs text-muted-foreground">Esperada</span>
+                                <span className="text-xs font-medium">
+                                  {selectedOrder.expectedDate ? new Date(selectedOrder.expectedDate).toLocaleDateString("es-GT", {
+                                    year: 'numeric',
+                                    month: '2-digit',
+                                    day: '2-digit'
+                                  }) : '(sin fecha)'}
+                                </span>
+                              </div>
+
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs text-muted-foreground">Creada</span>
+                                <span className="text-xs">
+                                  {selectedOrder.createdAt ? new Date(selectedOrder.createdAt).toLocaleString("es-GT", {
+                                    year: 'numeric',
+                                    month: '2-digit',
+                                    day: '2-digit',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    hour12: true
+                                  }) : '(sin fecha)'}
+                                </span>
+                              </div>
+
+                              {selectedOrder.updatedAt && (
+                                <div className="flex justify-between items-center">
+                                  <span className="text-xs text-muted-foreground">Actualizada</span>
+                                  <span className="text-xs">
+                                    {new Date(selectedOrder.updatedAt).toLocaleString("es-GT", {
+                                      year: 'numeric',
+                                      month: '2-digit',
+                                      day: '2-digit',
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                      hour12: true
+                                    })}
+                                  </span>
+                                </div>
+                              )}
+                            </CardContent>
+                          </div>
+                        </Card>
+                      </div>
                     </div>
-                  </div>
-                  <div>
-                    <h4 className="font-medium mb-2">Fechas</h4>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between"><span className="text-muted-foreground">Fecha Orden:</span><span>{new Date(selectedOrder.orderDate).toLocaleDateString("es-GT")}</span></div>
-                      <div className="flex justify-between"><span className="text-muted-foreground">Fecha Esperada:</span><span>{new Date(selectedOrder.expectedDate).toLocaleDateString("es-GT")}</span></div>
+
+                    {/* Productos */}
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-base font-semibold flex items-center gap-2">
+                          <Package className="h-4 w-4 text-primary" />
+                          Productos ({selectedOrder.items?.length || 0})
+                        </h4>
+                        <Badge variant="secondary" className="gap-1 text-xs">
+                          <Package className="h-2.5 w-2.5" />
+                          Total items: {selectedOrder.items?.reduce((sum: number, item: any) => sum + item.quantity, 0) || 0}
+                        </Badge>
+                      </div>
+
+                      <div className="rounded-md border overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-muted/50">
+                              <TableHead className="min-w-[250px] text-xs">Producto</TableHead>
+                              <TableHead className="text-right min-w-[80px] text-xs">Cantidad</TableHead>
+                              <TableHead className="text-right min-w-[100px] text-xs">Precio Unitario</TableHead>
+                              <TableHead className="text-right min-w-[100px] text-xs">Subtotal</TableHead>
+                              <TableHead className="min-w-[110px] text-xs">Estado Recepción</TableHead>
+                              <TableHead className="min-w-[100px] text-xs">Lote</TableHead>
+                              <TableHead className="min-w-[100px] text-xs">Vencimiento</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {(selectedOrder.items || []).map((item: any) => {
+                              const receivedQuantity = item.receivedQuantity || 0;
+                              const isComplete = receivedQuantity >= item.quantity;
+                              const isPartial = receivedQuantity > 0 && receivedQuantity < item.quantity;
+                              return (
+                                <TableRow key={item.id} className="hover:bg-muted/50">
+                                  <TableCell className="py-2">
+                                    <div>
+                                      <div className="font-medium text-sm">{item.productName}</div>
+                                      <div className="text-xs text-muted-foreground font-mono">Código: {item.productCode}</div>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="text-right py-2">
+                                    <div className="text-sm font-medium">{item.quantity}</div>
+                                    <div className="text-xs text-muted-foreground">
+                                      Recibido: {receivedQuantity}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="text-right text-sm py-2">
+                                    Q{(item.unitCost || 0).toFixed(2)}
+                                  </TableCell>
+                                  <TableCell className="text-right text-sm font-medium py-2">
+                                    Q{((item.quantity || 0) * (item.unitCost || 0)).toFixed(2)}
+                                  </TableCell>
+                                  <TableCell className="py-2">
+                                    {isComplete ? (
+                                      <Badge className="gap-1 bg-green-500/10 text-green-600 border-green-200 text-xs">
+                                        <CheckCircle className="h-2.5 w-2.5" />
+                                        Completado
+                                      </Badge>
+                                    ) : isPartial ? (
+                                      <Badge className="gap-1 bg-yellow-500/10 text-yellow-600 border-yellow-200 text-xs">
+                                        <Clock className="h-2.5 w-2.5" />
+                                        Parcial
+                                      </Badge>
+                                    ) : (
+                                      <Badge variant="outline" className="text-muted-foreground text-xs">
+                                        <XCircle className="h-2.5 w-2.5 mr-1" />
+                                        Pendiente
+                                      </Badge>
+                                    )}
+                                  </TableCell>
+                                  <TableCell className="py-2">
+                                    <span className="text-sm">
+                                      {item.batchNumber || <span className="text-muted-foreground">—</span>}
+                                    </span>
+                                  </TableCell>
+                                  <TableCell className="py-2">
+                                    <span className="text-sm">
+                                      {item.expirationDate ? (
+                                        new Date(item.expirationDate).toLocaleDateString("es-GT")
+                                      ) : (
+                                        <span className="text-muted-foreground">—</span>
+                                      )}
+                                    </span>
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
                     </div>
+
+                    {/* Resumen Financiero y Total en una sola línea */}
+                    <div className="grid grid-cols-4 gap-3">
+                      {/* Subtotal */}
+                      <Card className="bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/20 dark:to-teal-950/20 shadow-sm">
+                        <CardContent className="p-1.5 text-center">
+                          <p className="text-[10px] text-muted-foreground">Subtotal</p>
+                          <p className="text-2xl font-bold text-emerald-600">
+                            Q{((selectedOrder.totalAmount || 0) + (selectedOrder.discount || 0) - (selectedOrder.shippingCost || 0))
+                              .toLocaleString("es-GT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </p>
+                        </CardContent>
+                      </Card>
+
+                      {/* Descuento */}
+                      <Card className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 shadow-sm">
+                        <CardContent className="p-1.5 text-center">
+                          <p className="text-[10px] text-muted-foreground">Descuento</p>
+                          <p className="text-2xl font-bold text-amber-600">
+                            Q{(selectedOrder.discount || 0).toLocaleString("es-GT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </p>
+                        </CardContent>
+                      </Card>
+
+                      {/* Costo de Envío */}
+                      <Card className="bg-gradient-to-br from-blue-50 to-sky-50 dark:from-blue-950/20 dark:to-sky-950/20 shadow-sm">
+                        <CardContent className="p-1.5 text-center">
+                          <p className="text-[10px] text-muted-foreground">Envío</p>
+                          <p className="text-2xl font-bold text-blue-600">
+                            Q{(selectedOrder.shippingCost || 0).toLocaleString("es-GT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </p>
+                        </CardContent>
+                      </Card>
+
+                      {/* Total General */}
+                      <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border shadow-sm">
+                        <CardContent className="p-1.5 text-center">
+                          <p className="text-[10px] text-muted-foreground">Total</p>
+                          <p className="text-2xl font-bold text-primary">
+                            Q{(selectedOrder.totalAmount || 0).toLocaleString("es-GT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </p>
+                          <div className="text-center">
+                            <p className="text-xs font-semibold">{selectedOrder.items?.length || 0} items</p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {selectedOrder.items?.reduce((sum: number, item: any) => sum + item.quantity, 0) || 0} unidades
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Notas - Más compacto */}
+                    {selectedOrder.notes && (
+                      <Card className="bg-muted/30">
+                        <CardHeader className="pt-1">
+                          <CardTitle className="text-xs font-semibold flex items-center gap-1">
+                            <FileText className="h-3 w-3 text-muted-foreground" />
+                            Notas adicionales
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-0">
+                          <p className="text-xs text-muted-foreground whitespace-pre-wrap">
+                            {selectedOrder.notes}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    )}
                   </div>
                 </div>
 
-                <Separator />
-
-                <div>
-                  <h4 className="font-medium mb-4">Productos ({selectedOrder.items?.length || 0})</h4>
-                  <div className="rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-muted/50">
-                          <TableHead>Producto</TableHead>
-                          <TableHead className="text-right">Cantidad</TableHead>
-                          <TableHead className="text-right">Precio Unitario</TableHead>
-                          <TableHead className="text-right">Total</TableHead>
-                          <TableHead>Estado</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {(selectedOrder.items || []).map((item: any) => (
-                          <TableRow key={item.id}>
-                            <TableCell>
-                              <div><span className="font-medium">{item.productName}</span><div className="text-xs text-muted-foreground font-mono">{item.productCode}</div></div>
-                            </TableCell>
-                            <TableCell className="text-right"><div className="font-medium">{item.quantity}</div><div className="text-xs text-muted-foreground">Recibido: {item.receivedQuantity || 0}</div></TableCell>
-                            <TableCell className="text-right">Q{(item.unitCost || 0).toFixed(2)}</TableCell>
-                            <TableCell className="text-right font-medium">Q{(item.totalCost || 0).toFixed(2)}</TableCell>
-                            <TableCell><Badge variant="outline" className="text-xs">{item.receivedQuantity && item.receivedQuantity >= item.quantity ? "Recibido" : "Pendiente"}</Badge></TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
-
-                <Card className="bg-gradient-to-r from-primary/5 to-primary/10">
-                  <CardContent className="p-4">
-                    <div className="flex justify-between items-center">
-                      <div><p className="text-sm text-muted-foreground">Total de la Orden</p><p className="text-3xl font-bold text-primary">Q{(selectedOrder.totalAmount || 0).toLocaleString("es-GT", { minimumFractionDigits: 2 })}</p></div>
-                      <div className="text-right"><p className="text-sm text-muted-foreground">Productos</p><p className="text-lg font-semibold">{selectedOrder.items?.length || 0} items</p></div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {selectedOrder.notes && (
-                  <Card>
-                    <CardHeader><CardTitle className="text-base">Notas</CardTitle></CardHeader>
-                    <CardContent><p className="text-sm text-muted-foreground">{selectedOrder.notes}</p></CardContent>
-                  </Card>
-                )}
-
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsItemsDialogOpen(false)}>Cerrar</Button>
+                {/* Footer siempre visible */}
+                <DialogFooter className="shrink-0 border-t bg-background p-4">
+                  <Button variant="outline" onClick={() => setIsItemsDialogOpen(false)}>
+                    Cerrar
+                  </Button>
                   {["pending", "approved"].includes(selectedOrder.status) && (
-                    <Button onClick={() => { setIsItemsDialogOpen(false); handleReceiveOrder(selectedOrder); }}>
-                      <PackageCheck className="mr-2 h-4 w-4" /> Recibir Orden
+                    <Button
+                      onClick={() => {
+                        setIsItemsDialogOpen(false);
+                        handleReceiveOrder(selectedOrder);
+                      }}
+                      className="gap-2"
+                    >
+                      <PackageCheck className="h-4 w-4" />
+                      Recibir Orden
                     </Button>
                   )}
                 </DialogFooter>

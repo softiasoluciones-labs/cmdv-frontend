@@ -1071,185 +1071,243 @@ export default function ApprovePurchaseOrdersPage() {
 
       {/* Diálogo de acción */}
       <Dialog open={isActionDialogOpen} onOpenChange={setIsActionDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              {selectedAction?.action === "approved" && (
-                <div className="p-1 rounded-full bg-emerald-100 dark:bg-emerald-900">
-                  <CheckCircle className="h-5 w-5 text-emerald-600" />
+        <DialogContent className="w-[95vw] max-w-[500px] p-0 flex flex-col"
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}>
+          {selectedAction && selectedOrder && (
+            <>
+              {/* Header con gradiente según la acción */}
+              <div className={cn(
+                "p-5 pb-3 rounded-t-lg",
+                selectedAction.action === "approved" && "bg-gradient-to-r from-emerald-50 to-emerald-100/50 dark:from-emerald-950/30 dark:to-emerald-900/20",
+                selectedAction.action === "cancelled" && "bg-gradient-to-r from-rose-50 to-rose-100/50 dark:from-rose-950/30 dark:to-rose-900/20",
+                selectedAction.action === "pending" && "bg-gradient-to-r from-amber-50 to-amber-100/50 dark:from-amber-950/30 dark:to-amber-900/20"
+              )}>
+                <div className="flex items-start gap-3">
+                  <div className={cn(
+                    "p-2 rounded-full shrink-0",
+                    selectedAction.action === "approved" && "bg-emerald-100 dark:bg-emerald-900/50",
+                    selectedAction.action === "cancelled" && "bg-rose-100 dark:bg-rose-900/50",
+                    selectedAction.action === "pending" && "bg-amber-100 dark:bg-amber-900/50"
+                  )}>
+                    {selectedAction.action === "approved" && <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />}
+                    {selectedAction.action === "cancelled" && <XCircle className="h-5 w-5 text-rose-600 dark:text-rose-400" />}
+                    {selectedAction.action === "pending" && <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />}
+                  </div>
+                  <div className="flex-1">
+                    <DialogTitle className="text-lg font-semibold">
+                      {selectedAction.label}
+                    </DialogTitle>
+                    <DialogDescription className="text-sm mt-0.5">
+                      ¿Estás seguro de que deseas {selectedAction.label.toLowerCase()} la orden?
+                    </DialogDescription>
+                  </div>
                 </div>
-              )}
-              {selectedAction?.action === "cancelled" && (
-                <div className="p-1 rounded-full bg-rose-100 dark:bg-rose-900">
-                  <XCircle className="h-5 w-5 text-rose-600" />
-                </div>
-              )}
-              {selectedAction?.action === "pending" && (
-                <div className="p-1 rounded-full bg-amber-100 dark:bg-amber-900">
-                  <Clock className="h-5 w-5 text-amber-600" />
-                </div>
-              )}
-              {selectedAction?.label}
-            </DialogTitle>
-            <DialogDescription>
-              ¿Estás seguro de que deseas {selectedAction?.label.toLowerCase()} la orden{" "}
-              <span className="font-mono font-medium">{selectedOrder?.orderNumber}</span>?
-            </DialogDescription>
-          </DialogHeader>
+              </div>
 
-          <div className="space-y-4">
-            <Card className="bg-gradient-to-br from-muted/50 to-muted/30">
-              <CardContent className="p-4 space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Proveedor:</span>
-                  <span className="font-medium">
-                    {suppliers.find((s) => s.id === selectedOrder?.supplierId)?.name || "N/A"}
-                  </span>
-                </div>
-                <Separator />
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Monto total:</span>
-                  <span className="text-xl font-bold text-primary">
-                    Q{(selectedOrder?.totalAmount || 0).toLocaleString("es-GT", { minimumFractionDigits: 2 })}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Productos:</span>
-                  <span className="font-medium">{getTotalItems(selectedOrder)} unidades</span>
-                </div>
-              </CardContent>
-            </Card>
+              {/* Contenido scrollable */}
+              <div className="flex-1 px-5 py-4">
+                <div className="space-y-4">
+                  {/* Información de la orden */}
+                  <Card className="shadow-sm border">
+                    <CardContent className="p-3 space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Orden:</span>
+                        <span className="font-mono font-medium text-sm bg-muted/50 px-2 py-0.5 rounded">
+                          {selectedOrder.orderNumber}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Proveedor:</span>
+                        <span className="font-medium truncate ml-2">
+                          {suppliers.find((s) => s.id === selectedOrder.supplierId)?.name || "N/A"}
+                        </span>
+                      </div>
+                      <Separator className="my-1" />
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Monto total:</span>
+                        <span className="text-lg font-bold text-primary">
+                          Q{(selectedOrder.totalAmount || 0).toLocaleString("es-GT", { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Productos:</span>
+                        <span className="font-medium">{getTotalItems(selectedOrder)} unidades</span>
+                      </div>
+                    </CardContent>
+                  </Card>
 
-            <div className="space-y-2">
-              <Label htmlFor="comment">
-                Comentario {selectedAction?.action === "cancelled" && "(opcional)"}
-              </Label>
-              <Textarea
-                id="comment"
-                placeholder={
-                  selectedAction?.action === "approved"
-                    ? "Ej: Revisión de inventario completada, proceder con la orden."
-                    : selectedAction?.action === "cancelled"
-                      ? "Ej: Proveedor no cumple con requisitos, orden cancelada."
-                      : "Ej: Enviar a aprobación para revisión del equipo."
-                }
-                value={actionComment}
-                onChange={(e) => setActionComment(e.target.value)}
-                rows={3}
-                className="resize-none"
-              />
-            </div>
-          </div>
+                  {/* Comentario */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="comment" className="text-sm font-medium">
+                      Comentario {selectedAction.action === "cancelled" &&
+                        <span className="text-xs text-muted-foreground font-normal">(opcional)</span>
+                      }
+                    </Label>
+                    <Textarea
+                      id="comment"
+                      placeholder={
+                        selectedAction.action === "approved"
+                          ? "Ej: Revisión de inventario completada, proceder con la orden..."
+                          : selectedAction.action === "cancelled"
+                            ? "Ej: Proveedor no cumple con requisitos, orden cancelada..."
+                            : "Ej: Enviar a aprobación para revisión del equipo..."
+                      }
+                      value={actionComment}
+                      onChange={(e) => setActionComment(e.target.value)}
+                      rows={3}
+                      className="resize-none text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
 
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setIsActionDialogOpen(false)} disabled={isSubmitting}>
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleSubmitAction}
-              disabled={isSubmitting}
-              className={cn(
-                selectedAction?.action === "approved" && "bg-emerald-600 hover:bg-emerald-700",
-                selectedAction?.action === "cancelled" && "bg-rose-600 hover:bg-rose-700",
-                selectedAction?.action === "pending" && "bg-amber-600 hover:bg-amber-700",
-                "gap-2"
-              )}
-            >
-              {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-              <Check className="h-4 w-4" />
-              Confirmar {selectedAction?.label}
-            </Button>
-          </DialogFooter>
+              {/* Footer */}
+              <DialogFooter className="shrink-0 border-t bg-background p-4 gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsActionDialogOpen(false)}
+                  disabled={isSubmitting}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleSubmitAction}
+                  disabled={isSubmitting}
+                  className={cn(
+                    "gap-2 min-w-[120px]",
+                    selectedAction.action === "approved" && "bg-emerald-600 hover:bg-emerald-700",
+                    selectedAction.action === "cancelled" && "bg-rose-600 hover:bg-rose-700",
+                    selectedAction.action === "pending" && "bg-amber-600 hover:bg-amber-700"
+                  )}
+                >
+                  {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {!isSubmitting && <Check className="h-4 w-4" />}
+                  Confirmar {selectedAction.label}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 
       {/* Diálogo de detalles */}
       <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh]">
+        <DialogContent
+          className="w-[95vw] max-w-[1200px] h-[85vh] p-0 flex flex-col"
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+        >
           {selectedOrderDetail && (
             <>
-              <DialogHeader>
-                <DialogTitle className="flex items-center justify-between">
-                  <span>Detalles de la Orden</span>
+              <DialogHeader className="p-5 pb-3 shrink-0 border-b">
+                <div className="flex items-center justify-between pr-10">
+                  <DialogTitle className="text-xl">
+                    Detalles de la Orden
+                  </DialogTitle>
+                </div>
+                <div className="flex items-center justify-between mt-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Orden:</span>
+                    <span className="font-mono font-semibold text-sm bg-muted/50 px-2 py-0.5 rounded">
+                      {selectedOrderDetail.orderNumber}
+                    </span>
+                  </div>
                   {getStatusBadge(selectedOrderDetail.status)}
-                </DialogTitle>
-                <DialogDescription>
-                  Orden: <span className="font-mono font-medium">{selectedOrderDetail.orderNumber}</span>
-                </DialogDescription>
+                </div>
               </DialogHeader>
 
-              <ScrollArea className="h-[60vh] pr-4">
-                <div className="space-y-6">
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-3">
-                      <h4 className="font-semibold flex items-center gap-2">
-                        <Building2 className="h-4 w-4" />
+              {/* Scrollable content */}
+              <div className="flex-1 overflow-y-auto px-5 py-4">
+                <div className="space-y-5">
+                  {/* Información del Proveedor y Entrega */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Información del Proveedor */}
+                    <div className="space-y-2">
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                        <Building2 className="h-3.5 w-3.5" />
                         Información del Proveedor
                       </h4>
-                      <div className="space-y-2 text-sm bg-muted/30 rounded-lg p-3">
-                        <div className="flex justify-between">
+                      <div className="bg-muted/30 rounded-lg p-3 space-y-1.5">
+                        <div className="flex justify-between items-center text-sm">
                           <span className="text-muted-foreground">Nombre:</span>
                           <span className="font-medium">
                             {suppliers.find((s) => s.id === selectedOrderDetail.supplierId)?.name || "N/A"}
                           </span>
                         </div>
-                        <div className="flex justify-between">
+                        <div className="flex justify-between items-center text-sm">
                           <span className="text-muted-foreground">Email:</span>
-                          <span>{suppliers.find((s) => s.id === selectedOrderDetail.supplierId)?.email || "N/A"}</span>
+                          <span className="text-sm">
+                            {suppliers.find((s) => s.id === selectedOrderDetail.supplierId)?.email || "N/A"}
+                          </span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="space-y-3">
-                      <h4 className="font-semibold flex items-center gap-2">
-                        <Warehouse className="h-4 w-4" />
+                    {/* Información de Entrega */}
+                    <div className="space-y-2">
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                        <Warehouse className="h-3.5 w-3.5" />
                         Información de Entrega
                       </h4>
-                      <div className="space-y-2 text-sm bg-muted/30 rounded-lg p-3">
-                        <div className="flex justify-between">
+                      <div className="bg-muted/30 rounded-lg p-3 space-y-1.5">
+                        <div className="flex justify-between items-center text-sm">
                           <span className="text-muted-foreground">Bodega destino:</span>
                           <span className="font-medium">{selectedOrderDetail.warehouseName || "N/A"}</span>
                         </div>
-                        <div className="flex justify-between">
+                        <div className="flex justify-between items-center text-sm">
                           <span className="text-muted-foreground">Fecha esperada:</span>
                           <span>
-                            {new Date(selectedOrderDetail.expectedDate).toLocaleDateString("es-GT")}
+                            {selectedOrderDetail.expectedDate
+                              ? new Date(selectedOrderDetail.expectedDate).toLocaleDateString("es-GT")
+                              : "No definida"}
                           </span>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <Separator />
+                  <Separator className="my-1" />
 
-                  <div>
-                    <h4 className="font-semibold mb-3 flex items-center gap-2">
-                      <Package className="h-4 w-4" />
-                      Productos ({selectedOrderDetail.items?.length || 0})
-                    </h4>
-                    <div className="rounded-lg border">
+                  {/* Productos */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                        <Package className="h-3.5 w-3.5" />
+                        Productos ({selectedOrderDetail.items?.length || 0})
+                      </h4>
+                      <Badge variant="secondary" className="text-[10px]">
+                        Total: {selectedOrderDetail.items?.reduce((sum: number, item: any) => sum + item.quantity, 0) || 0} unidades
+                      </Badge>
+                    </div>
+
+                    <div className="rounded-md border overflow-x-auto">
                       <Table>
                         <TableHeader>
-                          <TableRow>
-                            <TableHead>Producto</TableHead>
-                            <TableHead className="text-right">Cantidad</TableHead>
-                            <TableHead className="text-right">Costo Unitario</TableHead>
-                            <TableHead className="text-right">Subtotal</TableHead>
+                          <TableRow className="bg-muted/50">
+                            <TableHead className="min-w-[250px] text-xs">Producto</TableHead>
+                            <TableHead className="text-right min-w-[80px] text-xs">Cantidad</TableHead>
+                            <TableHead className="text-right min-w-[120px] text-xs">Costo Unitario</TableHead>
+                            <TableHead className="text-right min-w-[120px] text-xs">Subtotal</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {(selectedOrderDetail.items || []).map((item: any) => (
-                            <TableRow key={item.id}>
-                              <TableCell>
+                            <TableRow key={item.id} className="hover:bg-muted/50">
+                              <TableCell className="py-2">
                                 <div>
-                                  <div className="font-medium">{item.productName}</div>
-                                  <div className="text-xs text-muted-foreground">Código: {item.productCode}</div>
+                                  <div className="font-medium text-sm">{item.productName}</div>
+                                  <div className="text-xs text-muted-foreground font-mono">Código: {item.productCode}</div>
                                 </div>
                               </TableCell>
-                              <TableCell className="text-right font-mono">{item.quantity}</TableCell>
-                              <TableCell className="text-right">Q{item.unitCost?.toFixed(2) || 0}</TableCell>
-                              <TableCell className="text-right font-medium">
-                                Q{(item.quantity * item.unitCost).toFixed(2)}
+                              <TableCell className="text-right py-2">
+                                <span className="font-mono text-sm">{item.quantity}</span>
+                              </TableCell>
+                              <TableCell className="text-right py-2 text-sm">
+                                Q{(item.unitCost || 0).toFixed(2)}
+                              </TableCell>
+                              <TableCell className="text-right py-2 font-medium text-sm">
+                                Q{((item.quantity || 0) * (item.unitCost || 0)).toFixed(2)}
                               </TableCell>
                             </TableRow>
                           ))}
@@ -1258,40 +1316,45 @@ export default function ApprovePurchaseOrdersPage() {
                     </div>
                   </div>
 
-                  <Card className="bg-gradient-to-r from-primary/5 to-primary/10">
+                  {/* Total General */}
+                  <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border shadow-sm">
                     <CardContent className="p-4">
                       <div className="flex justify-between items-center">
                         <div>
-                          <p className="text-sm text-muted-foreground">Total de la Orden</p>
-                          <p className="text-3xl font-bold text-primary">
+                          <p className="text-xs text-muted-foreground">Total de la Orden</p>
+                          <p className="text-2xl font-bold text-primary">
                             Q{(selectedOrderDetail.totalAmount || 0).toLocaleString("es-GT", { minimumFractionDigits: 2 })}
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm text-muted-foreground">Estado actual</p>
-                          {getStatusBadge(selectedOrderDetail.status)}
+                          <p className="text-xs text-muted-foreground">Estado actual</p>
+                          <div className="mt-1">{getStatusBadge(selectedOrderDetail.status)}</div>
                         </div>
                       </div>
                     </CardContent>
                   </Card>
 
+                  {/* Notas */}
                   {selectedOrderDetail.notes && (
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-base flex items-center gap-2">
-                          <FileText className="h-4 w-4" />
-                          Notas
+                    <Card className="bg-muted/30 shadow-sm">
+                      <CardHeader className="pb-0 pt-1">
+                        <CardTitle className="text-xs font-semibold flex items-center gap-1.5">
+                          <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                          Notas adicionales
                         </CardTitle>
                       </CardHeader>
-                      <CardContent>
-                        <p className="text-sm whitespace-pre-wrap">{selectedOrderDetail.notes}</p>
+                      <CardContent className="pt-0 pb-1">
+                        <p className="text-sm whitespace-pre-wrap text-muted-foreground">
+                          {selectedOrderDetail.notes}
+                        </p>
                       </CardContent>
                     </Card>
                   )}
                 </div>
-              </ScrollArea>
+              </div>
 
-              <DialogFooter className="gap-2">
+              {/* Footer siempre visible */}
+              <DialogFooter className="shrink-0 border-t bg-background p-4 gap-2">
                 <Button variant="outline" onClick={() => setIsDetailDialogOpen(false)}>
                   Cerrar
                 </Button>
@@ -1304,6 +1367,8 @@ export default function ApprovePurchaseOrdersPage() {
 
                   if (!actionConfig) return null;
 
+                  const Icon = actionConfig.icon;
+
                   return (
                     <Button
                       key={action}
@@ -1313,7 +1378,7 @@ export default function ApprovePurchaseOrdersPage() {
                       }}
                       className={actionConfig.color}
                     >
-                      <actionConfig.icon className="mr-2 h-4 w-4" />
+                      <Icon className="mr-2 h-4 w-4" />
                       {actionConfig.label}
                     </Button>
                   );
