@@ -138,6 +138,14 @@ const statusConfig = {
     gradient: "from-blue-50 to-sky-50 dark:from-blue-950/20 dark:to-sky-950/20",
     nextActions: [],
   },
+  closed: {
+    label: "Cerrada",
+    color: "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/30 dark:text-purple-400",
+    icon: CheckCircle,
+    description: "Orden pagada y cerrada",
+    gradient: "from-purple-50 to-purple-100 dark:from-purple-950/20 dark:to-purple-950/20",
+    nextActions: [],
+  },
 };
 
 // Prioridades
@@ -604,7 +612,9 @@ export default function ApprovePurchaseOrdersPage() {
                     <SelectItem value="draft">Borrador</SelectItem>
                     <SelectItem value="pending">Pendiente</SelectItem>
                     <SelectItem value="approved">Aprobada</SelectItem>
+                    <SelectItem value="received">Recibida</SelectItem>
                     <SelectItem value="cancelled">Cancelada</SelectItem>
+                    <SelectItem value="closed">Cerrada</SelectItem>
                   </SelectContent>
                 </Select>
 

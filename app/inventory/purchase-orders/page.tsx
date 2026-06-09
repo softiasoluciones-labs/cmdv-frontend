@@ -129,6 +129,11 @@ const statusConfig = {
     color: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-400",
     icon: XCircle,
   },
+  closed: {
+    label: "Cerrada",
+    color: "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/30 dark:text-purple-400",
+    icon: CheckCircle,
+  },
 };
 
 interface OrderItem {
@@ -1086,6 +1091,7 @@ export default function PurchaseOrdersPage() {
                         <SelectItem value="approved">Aprobada</SelectItem>
                         <SelectItem value="received">Recibida</SelectItem>
                         <SelectItem value="cancelled">Cancelada</SelectItem>
+                        <SelectItem value="closed">Cerrada</SelectItem>
                       </SelectContent>
                     </Select>
 
