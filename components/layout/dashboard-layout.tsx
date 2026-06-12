@@ -18,7 +18,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     <div className="min-h-screen bg-background">
       <Sidebar />
       <Header sidebarCollapsed={sidebarCollapsed} />
-      <main className={cn("pt-16 transition-all duration-300", sidebarCollapsed ? "pl-16" : "pl-64")}>
+      <main className={cn("pt-16 transition-all duration-300", sidebarCollapsed ? "pl-16" : "pl-72")}>
         <div className="p-6">{children}</div>
       </main>
     </div>

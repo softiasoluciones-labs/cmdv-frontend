@@ -2,7 +2,7 @@
 
 import type React from "react";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -48,6 +48,8 @@ import {
   BookUser,
 } from "lucide-react";
 
+const STORAGE_KEY = "sidebar-expanded-items";
+
 interface NavItem {
   title: string;
   href: string;
@@ -88,6 +90,11 @@ const navigation: NavItem[] = [
         title: "Aprobacion de PO",
         href: "/inventory/purchase-orders/status",
         icon: UserCog,
+      },
+      {
+        title: "Despachos de bodega",
+        href: "/inventory/warehouse-dispatches",
+        icon: Truck,
       },
     ],
   },
@@ -174,6 +181,30 @@ export function Sidebar() {
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const pathname = usePathname();
 
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      try {
+        setExpandedItems(JSON.parse(stored));
+      } catch {
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(expandedItems));
+  }, [expandedItems]);
+
+  useEffect(() => {
+    const shouldAutoExpand = navigation.find((item) =>
+      item.children?.some((child) => pathname === child.href)
+    );
+    if (shouldAutoExpand && !expandedItems.includes(shouldAutoExpand.title)) {
+      setExpandedItems((prev) => [...prev, shouldAutoExpand.title]);
+    }
+  }, [pathname]);
+
   const toggleExpanded = (title: string) => {
     setExpandedItems((prev) =>
       prev.includes(title)
@@ -191,22 +222,22 @@ export function Sidebar() {
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          "fixed left-0 top-0 z-40 h-screen bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-all duration-300",
-          collapsed ? "w-16" : "w-64",
+          "fixed left-0 top-0 z-40 h-screen bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-all duration-300 flex flex-col",
+          collapsed ? "w-16" : "w-72",
         )}
       >
         {/* Logo */}
-        <div className="flex h-16 items-center justify-between px-4 border-b border-sidebar-border">
+        <div className="flex h-16 items-center justify-between px-5 border-b border-sidebar-border">
           {!collapsed && (
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sidebar-primary">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary">
                 <Building2 className="h-5 w-5 text-sidebar-primary-foreground" />
               </div>
-              <div className="flex flex-col">
-                <span className="text-sm font-semibold text-sidebar-foreground">
+              <div className="flex flex-col min-w-0">
+                <span className="text-base font-semibold text-sidebar-foreground truncate">
                   MediCare Pro
                 </span>
-                <span className="text-xs text-sidebar-foreground/60">
+                <span className="text-xs text-sidebar-foreground/60 truncate">
                   Sistema Hospitalario
                 </span>
               </div>
@@ -267,9 +298,9 @@ export function Sidebar() {
                             : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                         )}
                       >
-                        <div className="flex items-center gap-3">
-                          <Icon className="h-5 w-5" />
-                          <span>{item.title}</span>
+                        <div className="flex items-center gap-3 min-w-0">
+                          <Icon className="h-5 w-5 shrink-0" />
+<span className="font-medium truncate">{item.title}</span>
                         </div>
                         <ChevronRight
                           className={cn(
@@ -288,14 +319,14 @@ export function Sidebar() {
                                 key={child.href}
                                 href={child.href}
                                 className={cn(
-                                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors min-w-0",
                                   childActive
                                     ? "bg-sidebar-primary text-sidebar-primary-foreground"
                                     : "text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                                 )}
                               >
-                                <ChildIcon className="h-4 w-4" />
-                                <span>{child.title}</span>
+                                <ChildIcon className="h-4 w-4 shrink-0" />
+                                <span className="font-medium truncate">{child.title}</span>
                               </Link>
                             );
                           })}
@@ -306,14 +337,14 @@ export function Sidebar() {
                     <Link
                       href={item.href}
                       className={cn(
-                        "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
+                        "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors min-w-0",
                         active
                           ? "bg-sidebar-primary text-sidebar-primary-foreground"
                           : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                       )}
                     >
-                      <Icon className="h-5 w-5" />
-                      <span>{item.title}</span>
+                      <Icon className="h-5 w-5 shrink-0" />
+                      <span className="font-medium truncate">{item.title}</span>
                     </Link>
                   )}
                 </div>

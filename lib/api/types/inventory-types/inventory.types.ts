@@ -90,7 +90,7 @@ export interface Supplier {
     isActive: boolean;
 }
 
-export interface editSupplierData { 
+export interface editSupplierData {
     id: string;
     code: string;
     name: string;
@@ -137,16 +137,16 @@ export interface PurchaseOrder {
     items: PurchaseOrderItem[];
 }
 
-export interface PurchaseOrderChangeStatus { 
-    status: string; 
+export interface PurchaseOrderChangeStatus {
+    status: string;
 }
 
-export interface PurchaseOrderReceivedItems { 
+export interface PurchaseOrderReceivedItems {
     receivedItems: receivedItems[];
     notes?: string;
 }
 
-export interface receivedItems { 
+export interface receivedItems {
     productId: string;
     quantity: number;
     batchNumber?: string;
@@ -154,7 +154,7 @@ export interface receivedItems {
 }
 
 export interface PurchaseOrderItem {
-    id: string; 
+    id: string;
     productId: string;
     productCode: string;
     productName: string;
@@ -190,7 +190,7 @@ export interface CreatePurchaseOrderPayload {
 export interface PurchaseOrdersQueryParams {
     supplierId?: string;
     status?: "draft" | "pending" | "approved" | "received" | "cancelled" | "closed";
-    page?: number; 
+    page?: number;
     limit?: number;
     search?: string;
 }
@@ -270,3 +270,71 @@ export interface PaginatedPaymentsResponse {
 }
 
 /*****************************************************************/
+
+/**
+ * Warehouse dispatch interfaces
+ */
+export interface WarehouseDispatch {
+    id: string;
+    dispatch_number: string;
+    source_warehouse_id: string;
+    source_warehouse_name?: string;
+    destination_warehouse_id: string;
+    destination_warehouse_name?: string;
+    requester_name: string;
+    requester_user_id?: string;
+    status: 'pending' | 'approved' | 'dispatched' | 'completed' | 'cancelled';
+    dispatch_date?: string;
+    requested_date?: string;
+    completed_date?: string;
+    notes?: string;
+    created_at: string;
+    updated_at?: string;
+    created_by?: string;
+    dispatched_by?: string;
+    dispatched_at?: string;
+    details?: WarehouseDispatchDetail[];
+}
+
+export interface WarehouseDispatchDetail {
+    id: string;
+    dispatch_id: string;
+    product_id: string;
+    product_name?: string;
+    product_code?: string;
+    quantity: number;
+    delivered_quantity?: number;
+    notes?: string;
+}
+
+export interface CreateDispatchPayload {
+    source_warehouse_id: string;
+    destination_warehouse_id: string;
+    requester_name: string;
+    requester_user_id?: string;
+    requested_date?: string;
+    notes?: string;
+    items: {
+        product_id: string;
+        quantity: number;
+        notes?: string;
+    }[];
+}
+
+export interface UpdateDispatchStatusPayload {
+    status: 'pending' | 'approved' | 'dispatched' | 'completed' | 'cancelled';
+    dispatched_by?: string;
+    dispatched_at?: string;
+    completed_date?: string;
+}
+
+export interface DispatchSummary {
+    total: number;
+    pending: number;
+    approved: number;
+    dispatched: number;
+    completed: number;
+    cancelled: number;
+    inProgress: number;
+    completionRate: number;
+}
