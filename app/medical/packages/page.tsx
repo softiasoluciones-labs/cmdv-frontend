@@ -50,6 +50,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   Search,
   Plus,
+  Minus,
   Edit,
   Copy,
   Package as PackageIcon,
@@ -105,7 +106,7 @@ type SortField = 'code' | 'name' | 'doctor_type' | 'validity_days' | 'is_active'
 type SortOrder = 'asc' | 'desc';
 
 export default function PackagesPage() {
-  const { packages, pagination, isLoading, error, fetchPackages, createPackage, copyPackage, updatePackage, deactivatePackage } = usePackages({ limit: 1000 });
+  const { packages, pagination, isLoading, error, fetchPackages, createPackage, copyPackage, updatePackage, deactivatePackage, removePackageDetail, addPackageDetail } = usePackages({ limit: 1000 });
   const { products } = useProducts();
   const { services } = useServices({ limit: 100 });
 
@@ -127,6 +128,7 @@ export default function PackagesPage() {
   const [isPackageDialogOpen, setIsPackageDialogOpen] = useState(false);
   const [isCopyDialogOpen, setIsCopyDialogOpen] = useState(false);
   const [isProductsDialogOpen, setIsProductsDialogOpen] = useState(false);
+  const [isAddProductDialogOpen, setIsAddProductDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("list");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -329,6 +331,7 @@ export default function PackagesPage() {
       validity_days: pkg.validity_days?.toString() || "365",
       is_active: pkg.is_active,
     });
+    setPackageProducts(pkg.package_details || []);
     setIsPackageDialogOpen(true);
   };
 
@@ -431,6 +434,44 @@ export default function PackagesPage() {
       await deactivatePackage(pkg.id);
     } catch (error) {
       console.error("Error toggling package status:", error);
+    }
+  };
+
+  const handleRemovePackageProduct = async (detailId: string) => {
+    try {
+      await removePackageDetail(detailId);
+      setPackageProducts(prev => prev.filter(p => p.id !== detailId));
+    } catch (error) {
+      console.error("Error removing package product:", error);
+    }
+  };
+
+  const handleUpdateProductQuantity = (detailId: string, newQuantity: number) => {
+    if (newQuantity < 1) {
+      handleRemovePackageProduct(detailId);
+      return;
+    }
+    setPackageProducts(prev =>
+      prev.map(p => p.id === detailId ? { ...p, quantity: newQuantity } : p)
+    );
+  };
+
+  const handleAddProductToPackage = async (productId: string) => {
+    if (!selectedPackage) return;
+    try {
+      await addPackageDetail({
+        package_id: selectedPackage.id,
+        product_id: productId,
+        quantity: 1,
+      });
+      await fetchPackages();
+      const updatedPkg = packages.find(p => p.id === selectedPackage.id);
+      if (updatedPkg) {
+        setPackageProducts(updatedPkg.package_details || []);
+      }
+      setIsAddProductDialogOpen(false);
+    } catch (error) {
+      console.error("Error adding product to package:", error);
     }
   };
 
@@ -1318,6 +1359,99 @@ export default function PackagesPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Sección de Productos - Solo en modo edición */}
+              {selectedPackage && (
+                <div className="space-y-4 pt-4 border-t">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-medium flex items-center gap-2">
+                      <Box className="h-4 w-4 text-muted-foreground" />
+                      Productos del Paquete
+                    </Label>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">
+                        {packageProducts.length} producto(s)
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 gap-1"
+                        onClick={() => setIsAddProductDialogOpen(true)}
+                      >
+                        <Plus className="h-3 w-3" />
+                        Agregar
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/50">
+                          <TableHead>Producto</TableHead>
+                          <TableHead className="text-right w-[140px]">Cantidad</TableHead>
+                          <TableHead className="text-right w-[120px]">Costo Unit.</TableHead>
+                          <TableHead className="text-right w-[120px]">Subtotal</TableHead>
+                          <TableHead className="w-[80px]"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {packageProducts.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                              No hay productos en este paquete
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          packageProducts.map((prod) => (
+                            <TableRow key={prod.id}>
+                              <TableCell>
+                                <div className="font-medium">{prod.product?.name || "Producto"}</div>
+                                <div className="text-xs text-muted-foreground">Código: {prod.product?.code || "—"}</div>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex items-center justify-end gap-1">
+                                  <Button
+                                    variant="outline"
+                                    size="icon"
+                                    className="h-7 w-7"
+                                    onClick={() => handleUpdateProductQuantity(prod.id, prod.quantity - 1)}
+                                  >
+                                    <Minus className="h-3 w-3" />
+                                  </Button>
+                                  <span className="w-8 text-center font-medium">{prod.quantity}</span>
+                                  <Button
+                                    variant="outline"
+                                    size="icon"
+                                    className="h-7 w-7"
+                                    onClick={() => handleUpdateProductQuantity(prod.id, prod.quantity + 1)}
+                                  >
+                                    <Plus className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-right">{formatCurrency(prod.product?.unit_cost || 0)}</TableCell>
+                              <TableCell className="text-right font-medium">
+                                {formatCurrency(prod.quantity * (prod.product?.unit_cost || 0))}
+                              </TableCell>
+                              <TableCell>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-destructive hover:text-destructive"
+                                  onClick={() => handleRemovePackageProduct(prod.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
             </div>
           </ScrollArea>
           <DialogFooter className="sticky bottom-0 z-10 bg-background border-t px-6 py-4">
@@ -1604,7 +1738,6 @@ export default function PackagesPage() {
                         <TableHead className="text-right w-[100px]">Cantidad</TableHead>
                         <TableHead className="text-right w-[120px]">Costo Unitario</TableHead>
                         <TableHead className="text-right w-[120px]">Costo Total</TableHead>
-                        <TableHead className="w-[50px]"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1624,11 +1757,6 @@ export default function PackagesPage() {
                             <TableCell className="text-right font-medium">{prod.quantity}</TableCell>
                             <TableCell className="text-right">{formatCurrency(prod.product?.unit_cost || 0)}</TableCell>
                             <TableCell className="text-right font-medium">{formatCurrency((prod.quantity * (prod.product?.unit_cost || 0)) || 0)}</TableCell>
-                            <TableCell>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </TableCell>
                           </TableRow>
                         ))
                       )}
@@ -1639,10 +1767,43 @@ export default function PackagesPage() {
 
               <DialogFooter className="sticky bottom-0 z-10 bg-background border-t px-6 py-4">
                 <Button variant="outline" onClick={() => setIsProductsDialogOpen(false)}>Cerrar</Button>
-                <Button>Guardar Cambios</Button>
               </DialogFooter>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para Agregar Producto al Paquete */}
+      <Dialog open={isAddProductDialogOpen} onOpenChange={setIsAddProductDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Agregar Producto</DialogTitle>
+            <DialogDescription>
+              Seleccione un producto del inventario para agregar al paquete
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <Select onValueChange={handleAddProductToPackage}>
+              <SelectTrigger className="h-11">
+                <SelectValue placeholder="Buscar producto..." />
+              </SelectTrigger>
+              <SelectContent>
+                {products
+                  .filter(p => !packageProducts.some(pp => pp.product_id === p.id))
+                  .map((product) => (
+                    <SelectItem key={product.id} value={product.id}>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{product.name}</span>
+                        <span className="text-xs text-muted-foreground">Codigo: {product.code}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddProductDialogOpen(false)}>Cancelar</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </DashboardLayout>

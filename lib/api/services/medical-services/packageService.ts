@@ -59,5 +59,19 @@ export const packageService = {
      */
     deactivatePackage: async (id: string) => {
         return api.patch<Packages>(`${MEDICAL_PACKAGE_ENDPOINTS}/${id}/deactivate`, {});
+    },
+
+    /**
+     * Remove item detail from package
+     */
+    removePackageDetail: async (detailId: string) => {
+        return api.delete<{ success: boolean; response: string }>(`/medical/remove-item-detail/${detailId}`);
+    },
+
+    /**
+     * Add item detail to package
+     */
+    addPackageDetail: async (data: { package_id: string; product_id: string; quantity: number; notes?: string }) => {
+        return api.post<{ success: boolean; id: string; response: string }>(`/medical/packages/${data.package_id}/add-item`, data);
     }
 };

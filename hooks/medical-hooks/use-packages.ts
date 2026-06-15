@@ -21,6 +21,8 @@ interface usePackagesReturn extends usePackagesState {
     copyPackage: (id: string, data: { name: string; description?: string; external_doctor_price?: number; internal_doctor_price?: number }) => Promise<Packages>;
     updatePackage: (id: string, data: { description?: string; external_doctor_price?: number; internal_doctor_price?: number }) => Promise<Packages>;
     deactivatePackage: (id: string) => Promise<Packages>;
+    removePackageDetail: (detailId: string) => Promise<void>;
+    addPackageDetail: (data: { package_id: string; product_id: string; quantity: number; notes?: string }) => Promise<void>;
 }
 
 export function usePackages(initialParams: PackagesQueryParams = {}): usePackagesReturn {
@@ -79,6 +81,16 @@ export function usePackages(initialParams: PackagesQueryParams = {}): usePackage
         return response.data;
     }, [fetchPackages, currentParams]);
 
+    const removePackageDetail = useCallback(async (detailId: string): Promise<void> => {
+        await packageService.removePackageDetail(detailId);
+        await fetchPackages(currentParams);
+    }, [fetchPackages, currentParams]);
+
+    const addPackageDetail = useCallback(async (data: { package_id: string; product_id: string; quantity: number; notes?: string }): Promise<void> => {
+        await packageService.addPackageDetail(data);
+        await fetchPackages(currentParams);
+    }, [fetchPackages, currentParams]);
+
     useEffect(() => {
         fetchPackages(initialParams);
     }, [fetchPackages]);
@@ -90,5 +102,7 @@ export function usePackages(initialParams: PackagesQueryParams = {}): usePackage
         copyPackage,
         updatePackage,
         deactivatePackage,
+        removePackageDetail,
+        addPackageDetail,
     }
 }
