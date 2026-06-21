@@ -210,13 +210,14 @@ const handleSubmitEdit = async () => {
     if (!selectedCase) return
     setIsSubmitting(true)
     try {
-      await updateCaseFile(selectedCase.id, {
-        final_diagnosis: finalDiagnosis,
+      await updateCaseStatus(selectedCase.id, {
+        status: CaseStatusFlow.C3_CERRADO,
+        reason: "Alta médica",
         notes: closeNotes,
-        case_status: CaseStatus.DISCHARGED,
-        current_status_flow: CaseStatusFlow.C3_CERRADO,
-        discharge_date: new Date().toISOString(),
       })
+      if (finalDiagnosis) {
+        await updateCaseFile(selectedCase.id, { final_diagnosis: finalDiagnosis })
+      }
       setIsCloseOpen(false)
     } finally {
       setIsSubmitting(false)
@@ -1044,49 +1045,84 @@ const handleSubmitEdit = async () => {
         <DialogContent className="max-w-lg">
           {selectedCase && (
             <>
-              <DialogHeader>
-                <DialogTitle>Editar Expediente</DialogTitle>
-                <CardDescription>
-                  <span className="font-mono">{selectedCase.case_number}</span>
-                  {" · "}{selectedCase.patient_name}
-                </CardDescription>
+              <DialogHeader className="pb-4 border-b">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100">
+                    <Edit className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <DialogTitle>Editar Expediente</DialogTitle>
+                    <CardDescription className="flex items-center gap-2 pt-0.5">
+                      <span className="font-mono text-xs">{selectedCase.case_number}</span>
+                      <span>·</span>
+                      <span className="font-medium text-xs">{selectedCase.patient_name}</span>
+                    </CardDescription>
+                  </div>
+                </div>
               </DialogHeader>
 
-              <div className="space-y-4 py-4">
+              <div className="space-y-5 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-initial-diag">Diagnóstico Inicial</Label>
+                  <Label htmlFor="edit-initial-diag" className="text-sm font-medium flex items-center gap-1.5">
+                    <ClipboardCheck className="h-3.5 w-3.5 text-muted-foreground" />
+                    Diagnóstico Inicial
+                  </Label>
                   <Input
                     id="edit-initial-diag"
                     value={editForm.initial_diagnosis ?? ""}
                     onChange={e => setEditForm(f => ({ ...f, initial_diagnosis: e.target.value }))}
-                    placeholder="Diagnóstico inicial..."
+                    placeholder="Diagnóstico presuntivo..."
+                    className="h-10"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-final-diag">Diagnóstico Final</Label>
+                  <Label htmlFor="edit-final-diag" className="text-sm font-medium flex items-center gap-1.5">
+                    <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                    Diagnóstico Final
+                  </Label>
                   <Input
                     id="edit-final-diag"
                     value={editForm.final_diagnosis ?? ""}
                     onChange={e => setEditForm(f => ({ ...f, final_diagnosis: e.target.value }))}
-                    placeholder="Diagnóstico final..."
+                    placeholder="Diagnóstico al cierre del caso..."
+                    className="h-10"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-notes">Notas</Label>
+                  <Label htmlFor="edit-notes" className="text-sm font-medium flex items-center gap-1.5">
+                    <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                    Notas Adicionales
+                  </Label>
                   <Textarea
                     id="edit-notes"
                     value={editForm.notes ?? ""}
                     onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))}
-                    placeholder="Observaciones del expediente..."
+                    placeholder="Observaciones, comentarios o notas relevantes..."
                     rows={3}
+                    className="resize-none"
                   />
                 </div>
               </div>
 
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsEditOpen(false)} disabled={isSubmitting}>Cancelar</Button>
-                <Button onClick={handleSubmitEdit} disabled={isSubmitting}>
-                  {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Edit className="mr-2 h-4 w-4" />}
+              <DialogFooter className="pt-4 border-t gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsEditOpen(false)}
+                  disabled={isSubmitting}
+                  className="flex-1"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleSubmitEdit}
+                  disabled={isSubmitting}
+                  className="flex-1"
+                >
+                  {isSubmitting ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Edit className="mr-2 h-4 w-4" />
+                  )}
                   Guardar Cambios
                 </Button>
               </DialogFooter>
@@ -1102,48 +1138,72 @@ const handleSubmitEdit = async () => {
         <DialogContent className="max-w-md">
           {selectedCase && (
             <>
-              <DialogHeader>
-                <DialogTitle>Transferir Expediente</DialogTitle>
-                <CardDescription>
-                  <span className="font-mono">{selectedCase.case_number}</span>
-                  {" · "}{selectedCase.patient_name}
-                </CardDescription>
+              <DialogHeader className="pb-4 border-b">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-100">
+                    <ArrowRightLeft className="h-5 w-5 text-orange-600" />
+                  </div>
+                  <div>
+                    <DialogTitle>Transferir Expediente</DialogTitle>
+                    <CardDescription className="flex items-center gap-2 pt-0.5">
+                      <span className="font-mono text-xs">{selectedCase.case_number}</span>
+                      <span>·</span>
+                      <span className="font-medium text-xs">{selectedCase.patient_name}</span>
+                    </CardDescription>
+                  </div>
+                </div>
               </DialogHeader>
 
               <div className="space-y-4 py-4">
                 {isDialogLoading ? (
-                  <div className="flex items-center justify-center py-8 gap-3 text-muted-foreground">
-                    <Loader2 className="h-5 w-5 animate-spin" />Verificando transferibilidad...
+                  <div className="flex items-center justify-center py-10 gap-3 text-muted-foreground">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <span>Verificando transferibilidad...</span>
                   </div>
                 ) : transferability ? (
                   <>
                     <Alert className={transferability.allowed ? "bg-success/10 border-success/30" : "bg-destructive/10 border-destructive/30"}>
-                      {transferability.allowed
-                        ? <CheckCircle className="h-4 w-4 text-success" />
-                        : <XCircle className="h-4 w-4 text-destructive" />}
-                      <AlertTitle>
+                      {transferability.allowed ? (
+                        <CheckCircle className="h-4 w-4 text-success" />
+                      ) : (
+                        <XCircle className="h-4 w-4 text-destructive" />
+                      )}
+                      <AlertTitle className={transferability.allowed ? "text-success" : "text-destructive"}>
                         {transferability.allowed ? "Transferencia Permitida" : "Transferencia No Permitida"}
                       </AlertTitle>
                       {transferability.reason && (
-                        <AlertDescription>{transferability.reason}</AlertDescription>
+                        <AlertDescription className="mt-1">{transferability.reason}</AlertDescription>
                       )}
                     </Alert>
 
                     {transferability.allowed && (
-                      <div className="space-y-2">
-                        <Label htmlFor="transfer-notes">Notas de Transferencia</Label>
-                        <Textarea
-                          id="transfer-notes"
-                          placeholder="Motivo y observaciones de la transferencia..."
-                          value={transferNotes}
-                          onChange={e => setTransferNotes(e.target.value)}
-                          rows={3}
-                        />
+                      <div className="space-y-3">
+                        <div className="space-y-2">
+                          <Label htmlFor="transfer-notes" className="text-sm font-medium flex items-center gap-1.5">
+                            <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                            Notas de Transferencia
+                          </Label>
+                          <Textarea
+                            id="transfer-notes"
+                            placeholder="Describe el motivo de la transferencia y observaciones relevantes..."
+                            value={transferNotes}
+                            onChange={e => setTransferNotes(e.target.value)}
+                            rows={3}
+                            className="resize-none"
+                          />
+                        </div>
+
+                        <Alert className="border-orange-200 bg-orange-50/50">
+                          <AlertTriangle className="h-4 w-4 text-orange-600" />
+                          <AlertDescription className="text-sm text-orange-800">
+                            La transferencia creará un nuevo expediente vinculado al actual.
+                          </AlertDescription>
+                        </Alert>
                       </div>
                     )}
                   </>
                 ) : (
-                  <Alert>
+                  <Alert variant="destructive">
                     <AlertTriangle className="h-4 w-4" />
                     <AlertTitle>No se pudo verificar</AlertTitle>
                     <AlertDescription>No fue posible verificar la transferibilidad del expediente.</AlertDescription>
@@ -1151,11 +1211,26 @@ const handleSubmitEdit = async () => {
                 )}
               </div>
 
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsTransferOpen(false)} disabled={isSubmitting}>Cancelar</Button>
+              <DialogFooter className="pt-4 border-t gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsTransferOpen(false)}
+                  disabled={isSubmitting}
+                  className="flex-1"
+                >
+                  Cancelar
+                </Button>
                 {transferability?.allowed && (
-                  <Button onClick={handleSubmitTransfer} disabled={isSubmitting}>
-                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowRightLeft className="mr-2 h-4 w-4" />}
+                  <Button
+                    onClick={handleSubmitTransfer}
+                    disabled={isSubmitting}
+                    className="flex-1 bg-orange-600 hover:bg-orange-700"
+                  >
+                    {isSubmitting ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <ArrowRightLeft className="mr-2 h-4 w-4" />
+                    )}
                     Confirmar Traslado
                   </Button>
                 )}
@@ -1172,29 +1247,40 @@ const handleSubmitEdit = async () => {
         <DialogContent className="max-w-md">
           {selectedCase && (
             <>
-              <DialogHeader>
-                <DialogTitle>Cerrar Expediente</DialogTitle>
-                <CardDescription>
-                  <span className="font-mono">{selectedCase.case_number}</span>
-                  {" · "}{selectedCase.patient_name}
-                </CardDescription>
+              <DialogHeader className="pb-4 border-b">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal-100">
+                    <CheckCircle className="h-5 w-5 text-teal-600" />
+                  </div>
+                  <div>
+                    <DialogTitle>Cerrar Expediente</DialogTitle>
+                    <CardDescription className="flex items-center gap-2 pt-0.5">
+                      <span className="font-mono text-xs">{selectedCase.case_number}</span>
+                      <span>·</span>
+                      <span className="font-medium text-xs">{selectedCase.patient_name}</span>
+                    </CardDescription>
+                  </div>
+                </div>
               </DialogHeader>
 
               <div className="space-y-4 py-4">
                 {isDialogLoading ? (
-                  <div className="flex items-center justify-center py-8 gap-3 text-muted-foreground">
-                    <Loader2 className="h-5 w-5 animate-spin" />Verificando condiciones de cierre...
+                  <div className="flex items-center justify-center py-10 gap-3 text-muted-foreground">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <span>Verificando condiciones de cierre...</span>
                   </div>
                 ) : closability ? (
                   <>
                     <Alert className={closability.allowed ? "bg-success/10 border-success/30" : "bg-destructive/10 border-destructive/30"}>
-                      {closability.allowed
-                        ? <CheckCircle className="h-4 w-4 text-success" />
-                        : <XCircle className="h-4 w-4 text-destructive" />}
-                      <AlertTitle>
+                      {closability.allowed ? (
+                        <CheckCircle className="h-4 w-4 text-success" />
+                      ) : (
+                        <XCircle className="h-4 w-4 text-destructive" />
+                      )}
+                      <AlertTitle className={closability.allowed ? "text-success" : "text-destructive"}>
                         {closability.allowed ? "Expediente Cerrable" : "No Se Puede Cerrar"}
                       </AlertTitle>
-                      <AlertDescription>
+                      <AlertDescription className="mt-1">
                         {closability.allowed
                           ? "Cumple todos los requisitos para proceder con el alta."
                           : closability.reason ?? "Hay requisitos pendientes antes de cerrar el expediente."}
@@ -1203,45 +1289,64 @@ const handleSubmitEdit = async () => {
 
                     {closability.allowed && (
                       <>
-                        <div className="rounded-lg border p-3 space-y-2 text-sm">
-                          <p className="font-medium">Resumen del Caso</p>
-                          <div className="flex justify-between text-muted-foreground">
-                            <span>Paciente:</span>
-                            <span className="font-medium text-foreground">{selectedCase.patient_name}</span>
-                          </div>
-                          {selectedCase.total_cost != null && (
-                            <div className="flex justify-between text-muted-foreground">
-                              <span>Total Facturado:</span>
-                              <span className="font-medium text-foreground">{formatCurrency(selectedCase.total_cost)}</span>
+                        <Card className="border-muted">
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-medium flex items-center gap-2">
+                              <FileText className="h-4 w-4 text-muted-foreground" />
+                              Resumen del Caso
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="space-y-2">
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Paciente:</span>
+                              <span className="font-medium">{selectedCase.patient_name}</span>
                             </div>
-                          )}
-                        </div>
+                            {selectedCase.total_cost != null && (
+                              <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">Total Facturado:</span>
+                                <span className="font-medium text-teal-600">{formatCurrency(selectedCase.total_cost)}</span>
+                              </div>
+                            )}
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Fecha:</span>
+                              <span className="font-medium">{formatDate(selectedCase.admission_date)}</span>
+                            </div>
+                          </CardContent>
+                        </Card>
 
                         <div className="space-y-2">
-                          <Label htmlFor="close-final-diag">Diagnóstico Final</Label>
+                          <Label htmlFor="close-final-diag" className="text-sm font-medium flex items-center gap-1.5">
+                            <ClipboardCheck className="h-3.5 w-3.5 text-muted-foreground" />
+                            Diagnóstico Final
+                          </Label>
                           <Input
                             id="close-final-diag"
                             placeholder="Diagnóstico al momento del alta..."
                             value={finalDiagnosis}
                             onChange={e => setFinalDiagnosis(e.target.value)}
+                            className="h-10"
                           />
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="close-notes">Notas de Cierre</Label>
+                          <Label htmlFor="close-notes" className="text-sm font-medium flex items-center gap-1.5">
+                            <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                            Notas de Cierre
+                          </Label>
                           <Textarea
                             id="close-notes"
-                            placeholder="Observaciones del alta médica..."
+                            placeholder="Observaciones del alta médica, recomendaciones para el paciente..."
                             value={closeNotes}
                             onChange={e => setCloseNotes(e.target.value)}
                             rows={3}
+                            className="resize-none"
                           />
                         </div>
 
-                        <Alert>
-                          <AlertTriangle className="h-4 w-4" />
-                          <AlertTitle>Acción Irreversible</AlertTitle>
-                          <AlertDescription className="text-sm">
+                        <Alert variant="destructive" className="border-red-200 bg-red-50/50">
+                          <AlertTriangle className="h-4 w-4 text-red-600" />
+                          <AlertTitle className="text-red-800">Acción Irreversible</AlertTitle>
+                          <AlertDescription className="text-sm text-red-700">
                             El expediente será marcado como cerrado y no podrá reactivarse sin autorización.
                           </AlertDescription>
                         </Alert>
@@ -1249,7 +1354,7 @@ const handleSubmitEdit = async () => {
                     )}
                   </>
                 ) : (
-                  <Alert>
+                  <Alert variant="destructive">
                     <AlertTriangle className="h-4 w-4" />
                     <AlertTitle>No se pudo verificar</AlertTitle>
                     <AlertDescription>No fue posible verificar las condiciones de cierre.</AlertDescription>
@@ -1257,11 +1362,26 @@ const handleSubmitEdit = async () => {
                 )}
               </div>
 
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsCloseOpen(false)} disabled={isSubmitting}>Cancelar</Button>
+              <DialogFooter className="pt-4 border-t gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsCloseOpen(false)}
+                  disabled={isSubmitting}
+                  className="flex-1"
+                >
+                  Cancelar
+                </Button>
                 {closability?.allowed && (
-                  <Button onClick={handleSubmitClose} disabled={isSubmitting}>
-                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
+                  <Button
+                    onClick={handleSubmitClose}
+                    disabled={isSubmitting}
+                    className="flex-1 bg-teal-600 hover:bg-teal-700"
+                  >
+                    {isSubmitting ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <CheckCircle className="mr-2 h-4 w-4" />
+                    )}
                     Confirmar Alta
                   </Button>
                 )}

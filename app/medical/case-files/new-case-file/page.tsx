@@ -17,14 +17,17 @@ import { Separator } from "@/components/ui/separator"
 import {
   ArrowLeft, Save, X, Search, AlertTriangle, User, Phone, Mail,
   FileText, CheckCircle, XCircle, Loader2, Shield, RefreshCw,
-  CreditCard, MapPin, Calendar,
+  CreditCard, MapPin, Calendar, BedDouble, Package as PackageIcon, UserCog,
 } from "lucide-react"
 import { useCaseFile } from "@/hooks/medical-hooks/use-casefile"
 import { usePatients } from "@/hooks/medical-hooks/use-patients"
+import { useAdmissionTypes } from "@/hooks/medical-hooks/use-admission-types"
+import { useRooms } from "@/hooks/medical-hooks/use-rooms"
+import { usePackages } from "@/hooks/medical-hooks/use-packages"
+import { useDoctors } from "@/hooks/medical-hooks/use-doctors"
 import { CreateCaseFileRequest, ShiftType } from "@/lib/api/types/medical-types/caseFile.type"
 import { Patients, PatientsQueryParams } from "@/lib/api/types/medical-types/patient.types"
-
-// ─── Constants ───────────────────────────────────────────────────────────────
+import { AdmissionTypeListResponse } from "@/lib/api/types/medical-types/admission-type.types"
 
 const EMPTY_FORM: CreateCaseFileRequest = {
   patient_id: "",
@@ -36,8 +39,6 @@ const EMPTY_FORM: CreateCaseFileRequest = {
 }
 
 const EMPTY_SEARCH = { search: "", gender: "all", isActive: "all" }
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function formatGender(g: string): string {
   if (g === "male") return "Masculino"
@@ -51,27 +52,27 @@ function getAllergiesText(allergies: string | string[] | undefined): string {
   return allergies
 }
 
-// ─── Page ────────────────────────────────────────────────────────────────────
-
 export default function NewCaseFilePage() {
   const router = useRouter()
   const { createCaseFile } = useCaseFile()
-  // Hook auto-fetches on mount; we gate display behind hasSearched so no data is shown until user searches
   const { patients, isLoading: isSearching, fetchPatients } = usePatients()
+  const { admissionTypes, isLoading: isLoadingAdmissionTypes, fetchAdmissionTypes } = useAdmissionTypes()
+  const { rooms, isLoading: isLoadingRooms } = useRooms()
+  const { packages, isLoading: isLoadingPackages, fetchPackages } = usePackages()
+  const { doctors, isLoading: isLoadingDoctors } = useDoctors()
 
-  // Form state
   const [form, setForm] = useState<CreateCaseFileRequest>(EMPTY_FORM)
 
-  // Patient search state
   const [selectedPatient, setSelectedPatient] = useState<Patients | null>(null)
   const [hasSearched, setHasSearched] = useState(false)
   const [searchForm, setSearchForm] = useState(EMPTY_SEARCH)
 
-  // Submission state
+  const [selectedAdmissionType, setSelectedAdmissionType] = useState<AdmissionTypeListResponse | null>(null)
+  const [admissionTypeSearch, setAdmissionTypeSearch] = useState("")
+  const [showAdmissionTypeDropdown, setShowAdmissionTypeDropdown] = useState(false)
+
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  // ── Handlers ────────────────────────────────────────────────────────────────
 
   const handleSearch = async () => {
     const params: PatientsQueryParams = { limit: 15 }
@@ -92,9 +93,41 @@ export default function NewCaseFilePage() {
     setForm(f => ({ ...f, patient_id: "" }))
   }
 
+  const handleSelectAdmissionType = (type: AdmissionTypeListResponse) => {
+    setSelectedAdmissionType(type)
+    setForm(f => ({
+      ...f,
+      admission_type_id: type.id,
+      room_id: type.requires_hospitalization ? f.room_id : undefined,
+      package_id: type.requires_package ? f.package_id : undefined,
+      doctor_id: type.requires_package ? f.doctor_id : undefined,
+    }))
+    setShowAdmissionTypeDropdown(false)
+    setAdmissionTypeSearch("")
+  }
+
+  const handleClearAdmissionType = () => {
+    setSelectedAdmissionType(null)
+    setForm(f => ({ ...f, admission_type_id: "", room_id: undefined, package_id: undefined, doctor_id: undefined }))
+  }
+
+  const handleAdmissionTypeInputChange = async (value: string) => {
+    setAdmissionTypeSearch(value)
+    setShowAdmissionTypeDropdown(true)
+    await fetchAdmissionTypes({ search: value.trim() || undefined, is_active: true })
+  }
+
   const handleSubmit = async () => {
     if (!form.patient_id || !form.admission_type_id || !form.chief_complaint) {
       setError("Complete los campos obligatorios: Paciente, Tipo de Ingreso y Motivo de Consulta")
+      return
+    }
+    if (selectedAdmissionType?.requires_hospitalization && !form.room_id) {
+      setError("Este tipo de ingreso requiere asignar una habitación")
+      return
+    }
+    if (selectedAdmissionType?.requires_package && (!form.package_id || !form.doctor_id)) {
+      setError("Este tipo de ingreso requiere asignar un paquete y médico")
       return
     }
     setIsSubmitting(true)
@@ -111,12 +144,10 @@ export default function NewCaseFilePage() {
   const canSubmit = !isSubmitting && !!form.patient_id && !!form.admission_type_id && !!form.chief_complaint
   const allergiesText = getAllergiesText(selectedPatient?.allergies)
 
-  // ─── Render ─────────────────────────────────────────────────────────────────
   return (
     <DashboardLayout>
       <div className="space-y-6">
 
-        {/* Header */}
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => router.push("/medical/case-files")}>
             <ArrowLeft className="h-5 w-5" />
@@ -127,7 +158,6 @@ export default function NewCaseFilePage() {
           </div>
         </div>
 
-        {/* Error banner */}
         {error && (
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
@@ -136,13 +166,10 @@ export default function NewCaseFilePage() {
           </Alert>
         )}
 
-        {/* Two-column layout */}
         <div className="grid gap-6 lg:grid-cols-5">
 
-          {/* ── Left column: Search + Form ─────────────────────────────────── */}
           <div className="space-y-6 lg:col-span-3">
 
-            {/* Patient Search Card */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -161,9 +188,7 @@ export default function NewCaseFilePage() {
 
               <CardContent className="space-y-4">
                 {selectedPatient ? (
-                  /* ── Selected patient card ── */
                   <div className="rounded-lg border bg-muted/30 p-4 space-y-4">
-                    {/* Name + badges + change button */}
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10">
@@ -207,7 +232,6 @@ export default function NewCaseFilePage() {
 
                     <Separator />
 
-                    {/* Patient detail grid */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                       {selectedPatient.identificationNumber && (
                         <div className="flex items-center gap-2">
@@ -252,7 +276,6 @@ export default function NewCaseFilePage() {
                       )}
                     </div>
 
-                    {/* Allergy warning */}
                     {allergiesText && (
                       <div className="rounded-md bg-warning/10 border border-warning/20 px-3 py-2 text-xs">
                         <span className="font-semibold text-warning">⚠ Alergias registradas: </span>
@@ -261,9 +284,7 @@ export default function NewCaseFilePage() {
                     )}
                   </div>
                 ) : (
-                  /* ── Search UI ── */
                   <>
-                    {/* Filter row */}
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                       <div className="flex-1 space-y-1.5">
                         <Label htmlFor="patient-search" className="text-xs font-medium">
@@ -328,7 +349,6 @@ export default function NewCaseFilePage() {
                       </Button>
                     </div>
 
-                    {/* Results */}
                     {!hasSearched ? (
                       <div className="flex flex-col items-center py-10 text-center text-muted-foreground border border-dashed rounded-lg">
                         <Search className="mb-3 h-10 w-10 opacity-20" />
@@ -424,7 +444,6 @@ export default function NewCaseFilePage() {
               </CardContent>
             </Card>
 
-            {/* Case File Form Card */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -437,23 +456,183 @@ export default function NewCaseFilePage() {
               </CardHeader>
               <CardContent className="space-y-5">
 
-                {/* Tipo de ingreso */}
                 <div className="space-y-2">
                   <Label htmlFor="admission-type">
                     Tipo de Ingreso <span className="text-destructive">*</span>
                   </Label>
-                  <Input
-                    id="admission-type"
-                    placeholder="ID del tipo de ingreso..."
-                    value={form.admission_type_id}
-                    onChange={e => setForm(f => ({ ...f, admission_type_id: e.target.value }))}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Ingresa el ID del tipo de admisión configurado en el sistema
-                  </p>
+                  {selectedAdmissionType ? (
+                    <div className="rounded-lg border p-3 flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">{selectedAdmissionType.name}</p>
+                        <p className="text-xs text-muted-foreground font-mono">{selectedAdmissionType.code}</p>
+                        <div className="flex gap-2 mt-1">
+                          {selectedAdmissionType.requires_hospitalization && (
+                            <Badge variant="secondary" className="text-xs">
+                              <BedDouble className="h-3 w-3 mr-1" />Requiere habitación
+                            </Badge>
+                          )}
+                          {selectedAdmissionType.requires_package && (
+                            <Badge variant="secondary" className="text-xs">
+                              <PackageIcon className="h-3 w-3 mr-1" />Requiere paquete
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      <Button variant="ghost" size="sm" onClick={handleClearAdmissionType}>
+                        <RefreshCw className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <Input
+                        id="admission-type"
+                        placeholder="Buscar tipo de ingreso..."
+                        value={admissionTypeSearch}
+                        onChange={e => handleAdmissionTypeInputChange(e.target.value)}
+                        onFocus={() => setShowAdmissionTypeDropdown(true)}
+                      />
+                      {showAdmissionTypeDropdown && admissionTypes.length > 0 && (
+                        <div className="absolute z-50 top-full left-0 right-0 mt-1 max-h-60 overflow-y-auto rounded-md border bg-background shadow-lg">
+                          {isLoadingAdmissionTypes ? (
+                            <div className="p-4 text-center text-muted-foreground">
+                              <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
+                              Cargando...
+                            </div>
+                          ) : (
+                            <div className="py-1">
+                              {admissionTypes.map(type => (
+                                <button
+                                  key={type.id}
+                                  type="button"
+                                  className="w-full px-4 py-2 text-left hover:bg-muted/50 flex items-center justify-between"
+                                  onClick={() => handleSelectAdmissionType(type)}
+                                >
+                                  <div>
+                                    <p className="font-medium text-sm">{type.name}</p>
+                                    <p className="text-xs text-muted-foreground">{type.code}</p>
+                                  </div>
+                                  <div className="flex gap-1">
+                                    {type.requires_hospitalization && (
+                                      <Badge variant="outline" className="text-xs">
+                                        <BedDouble className="h-3 w-3" />
+                                      </Badge>
+                                    )}
+                                    {type.requires_package && (
+                                      <Badge variant="outline" className="text-xs">
+                                        <PackageIcon className="h-3 w-3" />
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
-                {/* Motivo de consulta */}
+                {selectedAdmissionType?.requires_hospitalization && (
+                  <div className="space-y-2">
+                    <Label htmlFor="room-id">
+                      Habitación <span className="text-destructive">*</span>
+                    </Label>
+                    <Select
+                      value={form.room_id ?? "none"}
+                      onValueChange={v => setForm(f => ({ ...f, room_id: v === "none" ? undefined : v }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar habitación..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {isLoadingRooms ? (
+                          <SelectItem value="loading" disabled>
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            Cargando...
+                          </SelectItem>
+                        ) : rooms.length === 0 ? (
+                          <SelectItem value="empty" disabled>No hay habitaciones disponibles</SelectItem>
+                        ) : (
+                          rooms.map(room => (
+                            <SelectItem key={room.id} value={room.id}>
+                              {room.room_number} - {room.room_type}
+                              {room.floor ? ` (Piso ${room.floor})` : ""}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Este tipo de ingreso requiere asignar una habitación
+                    </p>
+                  </div>
+                )}
+
+                {selectedAdmissionType?.requires_package && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="package-id">
+                        Paquete <span className="text-destructive">*</span>
+                      </Label>
+                      <Select
+                        value={form.package_id ?? "none"}
+                        onValueChange={v => setForm(f => ({ ...f, package_id: v === "none" ? undefined : v }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar paquete..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {isLoadingPackages ? (
+                            <SelectItem value="loading" disabled>
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                              Cargando...
+                            </SelectItem>
+                          ) : packages.length === 0 ? (
+                            <SelectItem value="empty" disabled>No hay paquetes disponibles</SelectItem>
+                          ) : (
+                            packages.map(pkg => (
+                              <SelectItem key={pkg.id} value={pkg.id}>
+                                {pkg.name || pkg.code}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="doctor-id">
+                        Médico <span className="text-destructive">*</span>
+                      </Label>
+                      <Select
+                        value={form.doctor_id ?? "none"}
+                        onValueChange={v => setForm(f => ({ ...f, doctor_id: v === "none" ? undefined : v }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar médico..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {isLoadingDoctors ? (
+                            <SelectItem value="loading" disabled>
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                              Cargando...
+                            </SelectItem>
+                          ) : doctors.length === 0 ? (
+                            <SelectItem value="empty" disabled>No hay médicos disponibles</SelectItem>
+                          ) : (
+                            doctors.map(doc => (
+                              <SelectItem key={doc.id} value={doc.id}>
+                                {doc.first_name} {doc.last_name}
+                                {doc.specialty_name ? ` - ${doc.specialty_name}` : ""}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
+                )}
+
                 <div className="space-y-2">
                   <Label htmlFor="chief-complaint">
                     Motivo de Consulta <span className="text-destructive">*</span>
@@ -467,7 +646,6 @@ export default function NewCaseFilePage() {
                   />
                 </div>
 
-                {/* Diagnóstico inicial */}
                 <div className="space-y-2">
                   <Label htmlFor="initial-diagnosis">Diagnóstico Inicial</Label>
                   <Input
@@ -478,7 +656,6 @@ export default function NewCaseFilePage() {
                   />
                 </div>
 
-                {/* Turno */}
                 <div className="space-y-2">
                   <Label>Turno</Label>
                   <Select
@@ -495,29 +672,41 @@ export default function NewCaseFilePage() {
                   </Select>
                 </div>
 
-                {/* Transferencia */}
-                <div className="flex items-center justify-between rounded-lg border p-3">
-                  <div>
-                    <Label className="font-medium">Caso de Transferencia</Label>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      ¿Este caso proviene de otro expediente?
-                    </p>
+                {selectedAdmissionType?.allows_transfer && (
+                  <div className="flex items-center justify-between rounded-lg border p-3">
+                    <div>
+                      <Label className="font-medium">Caso de Transferencia</Label>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        ¿Este caso proviene de otro expediente?
+                      </p>
+                    </div>
+                    <Select
+                      value={form.is_transfer ? "yes" : "no"}
+                      onValueChange={v => setForm(f => ({ ...f, is_transfer: v === "yes" }))}
+                    >
+                      <SelectTrigger className="w-24">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="no">No</SelectItem>
+                        <SelectItem value="yes">Sí</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <Select
-                    value={form.is_transfer ? "yes" : "no"}
-                    onValueChange={v => setForm(f => ({ ...f, is_transfer: v === "yes" }))}
-                  >
-                    <SelectTrigger className="w-24">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="no">No</SelectItem>
-                      <SelectItem value="yes">Sí</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                )}
 
-                {/* Notas */}
+                {form.is_transfer && (
+                  <div className="space-y-2">
+                    <Label htmlFor="transfer-from">Expediente de Origen</Label>
+                    <Input
+                      id="transfer-from"
+                      placeholder="ID del expediente original..."
+                      value={form.transfer_from_case_id ?? ""}
+                      onChange={e => setForm(f => ({ ...f, transfer_from_case_id: e.target.value }))}
+                    />
+                  </div>
+                )}
+
                 <div className="space-y-2">
                   <Label htmlFor="notes">Notas Adicionales</Label>
                   <Textarea
@@ -532,7 +721,6 @@ export default function NewCaseFilePage() {
             </Card>
           </div>
 
-          {/* ── Right column: Summary ──────────────────────────────────────── */}
           <div className="lg:col-span-2">
             <Card className="sticky top-6">
               <CardHeader>
@@ -541,7 +729,6 @@ export default function NewCaseFilePage() {
               </CardHeader>
 
               <CardContent className="space-y-4">
-                {/* Field preview */}
                 <div className="space-y-3 text-sm">
                   <div className="flex items-start justify-between gap-3">
                     <span className="text-muted-foreground shrink-0">Paciente</span>
@@ -554,10 +741,10 @@ export default function NewCaseFilePage() {
 
                   <div className="flex items-start justify-between gap-3">
                     <span className="text-muted-foreground shrink-0">Tipo ingreso</span>
-                    <span className="font-mono text-xs font-medium text-right break-all">
-                      {form.admission_type_id
-                        ? form.admission_type_id
-                        : <em className="text-muted-foreground font-sans font-normal text-sm">No especificado</em>}
+                    <span className="font-medium text-right">
+                      {selectedAdmissionType
+                        ? selectedAdmissionType.name
+                        : <em className="text-muted-foreground font-normal text-sm">No especificado</em>}
                     </span>
                   </div>
 
@@ -596,7 +783,6 @@ export default function NewCaseFilePage() {
 
                 <Separator />
 
-                {/* Required field checklist */}
                 <div className="space-y-2">
                   <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     Campos requeridos
@@ -605,6 +791,12 @@ export default function NewCaseFilePage() {
                     { label: "Paciente seleccionado", ok: !!form.patient_id },
                     { label: "Tipo de ingreso",        ok: !!form.admission_type_id },
                     { label: "Motivo de consulta",     ok: !!form.chief_complaint },
+                    ...(selectedAdmissionType?.requires_hospitalization
+                      ? [{ label: "Habitación asignada", ok: !!form.room_id }]
+                      : []),
+                    ...(selectedAdmissionType?.requires_package
+                      ? [{ label: "Paquete + Médico", ok: !!(form.package_id && form.doctor_id) }]
+                      : []),
                   ].map(({ label, ok }) => (
                     <div key={label} className="flex items-center gap-2 text-sm">
                       {ok

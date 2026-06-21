@@ -39,9 +39,10 @@ export function usePackages(initialParams: PackagesQueryParams = {}): usePackage
         setState((prev) => ({...prev, isLoading:true, error: null}));
         try {
             const response = await packageService.getAllPackages(params);
-            const data = response.data;
+            const data = response.data as any;
+            const packagesArray = data.packages || data.data || data || [];
             setState({
-                packages: data.packages || data.data || [],
+                packages: Array.isArray(packagesArray) ? packagesArray : [],
                 pagination: {
                     page: data.page || 1,
                     total: data.total || 0,
