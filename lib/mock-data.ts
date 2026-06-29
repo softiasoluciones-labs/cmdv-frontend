@@ -1569,6 +1569,109 @@ export type InventoryItem = {
   status: 'active' | 'low-stock' | 'out-of-stock' | 'inactive';
 };
 
+export type InventoryMovement = {
+  id: string;
+  itemId: string;
+  type: 'entry' | 'exit' | 'adjustment';
+  quantity: number;
+  date: string;
+  reference?: string;
+  notes?: string;
+};
+
+export const inventoryMovements: InventoryMovement[] = [
+  {
+    id: 'mv-001',
+    itemId: '1',
+    type: 'entry',
+    quantity: 500,
+    date: '2024-01-15',
+    reference: 'OC-2024-001',
+    notes: 'Recepción de compra a Distribuidora Médica Guatemala',
+  },
+  {
+    id: 'mv-002',
+    itemId: '2',
+    type: 'entry',
+    quantity: 300,
+    date: '2024-01-15',
+    reference: 'OC-2024-001',
+    notes: 'Recepción de compra a Distribuidora Médica Guatemala',
+  },
+  {
+    id: 'mv-003',
+    itemId: '1',
+    type: 'exit',
+    quantity: 50,
+    date: '2024-01-15',
+    reference: 'DISP-2024-001',
+    notes: 'Despacho a Farmacia',
+  },
+  {
+    id: 'mv-004',
+    itemId: '5',
+    type: 'entry',
+    quantity: 200,
+    date: '2024-01-14',
+    reference: 'OC-2024-002',
+    notes: 'Recepción de compra a Pharma Centro América',
+  },
+  {
+    id: 'mv-005',
+    itemId: '2',
+    type: 'adjustment',
+    quantity: -10,
+    date: '2024-01-14',
+    reference: 'AJ-2024-001',
+    notes: 'Ajuste por inventario físico, merma detectada',
+  },
+  {
+    id: 'mv-006',
+    itemId: '4',
+    type: 'entry',
+    quantity: 100,
+    date: '2024-01-13',
+    reference: 'OC-2024-003',
+    notes: 'Recepción de compra a Equipo Médico S.A.',
+  },
+  {
+    id: 'mv-007',
+    itemId: '3',
+    type: 'exit',
+    quantity: 5,
+    date: '2024-01-13',
+    reference: 'DISP-2024-002',
+    notes: 'Despacho a Cirugía',
+  },
+  {
+    id: 'mv-008',
+    itemId: '1',
+    type: 'exit',
+    quantity: 30,
+    date: '2024-01-12',
+    reference: 'DISP-2024-003',
+    notes: 'Venta farmacia - turno mañana',
+  },
+  {
+    id: 'mv-009',
+    itemId: '5',
+    type: 'adjustment',
+    quantity: -5,
+    date: '2024-01-12',
+    reference: 'AJ-2024-002',
+    notes: 'Ajuste por daño en almacén',
+  },
+  {
+    id: 'mv-010',
+    itemId: '2',
+    type: 'entry',
+    quantity: 150,
+    date: '2024-01-11',
+    reference: 'OC-2024-004',
+    notes: 'Recepción de compra a Suministros Hospitalarios',
+  },
+];
+
 export const inventoryItems: InventoryItem[] = [
   {
     id: '1',

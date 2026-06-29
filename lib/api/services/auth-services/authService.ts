@@ -87,11 +87,21 @@ async function refreshToken(refreshTokenData: RefreshTokenRequest): Promise<ApiR
 }
 
 /**
- * Logout (client-side only, clears tokens)
+ * Logout: tell the backend to revoke the current refresh token.
+ * Best-effort: a network failure is swallowed so the client can always
+ * clear its own cookies locally.
  */
-function logout(): void {
-    // This is handled by the auth context
-    // Backend doesn't need to be notified in this implementation
+async function logout(refreshToken: string): Promise<void> {
+    if (!refreshToken) return;
+    try {
+        await fetch(`${API_CONFIG.baseUrl}${AUTH_ENDPOINT}/logout`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ refreshToken }),
+        });
+    } catch {
+        // ignored — local cookies are still cleared
+    }
 }
 
 export const authService = {

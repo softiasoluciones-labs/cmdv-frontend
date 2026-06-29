@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, Suspense } from "react"
+import { useSearchParams } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -64,9 +65,20 @@ function scorePassword(value: string): { score: number; label: string; tone: str
 }
 
 export default function LoginPage() {
+    return (
+        <Suspense fallback={null}>
+            <LoginPageInner />
+        </Suspense>
+    );
+}
+
+function LoginPageInner() {
     const [showPassword, setShowPassword] = useState(false)
     const [rememberMe, setRememberMe] = useState(false)
     const [error, setError] = useState<string | null>(null)
+
+    const searchParams = useSearchParams()
+    const sessionExpired = searchParams.get("reason") === "expired"
 
     const { login } = useAuth()
     const {
@@ -250,6 +262,17 @@ export default function LoginPage() {
                                         Ingresa tus credenciales para acceder al sistema
                                     </CardDescription>
                                 </CardHeader>
+
+                                {sessionExpired && (
+                                    <div className="px-6 pt-2">
+                                        <Alert className="bg-amber-500/10 border-amber-500/20 backdrop-blur-sm">
+                                            <AlertCircle className="h-4 w-4 text-amber-400" />
+                                            <AlertDescription className="text-amber-300 text-sm">
+                                                Tu sesión expiró por inactividad. Vuelve a iniciar sesión para continuar.
+                                            </AlertDescription>
+                                        </Alert>
+                                    </div>
+                                )}
 
                                 <CardContent>
                                     {error && (

@@ -22,7 +22,7 @@ function getUserRole(request: NextRequest): string | null {
     }
 }
 
-function buildProdCsp(nonce: string) {
+function buildProdCsp(_nonce: string) {
     const apiOrigin = (() => {
         try {
             return new URL(process.env.NEXT_PUBLIC_API_URL ?? "").origin;
@@ -33,7 +33,18 @@ function buildProdCsp(nonce: string) {
 
     return [
         `default-src 'self'`,
-        `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
+        // TODO(security): volver a 'self' 'nonce-{nonce}' 'strict-dynamic' cuando
+        // se propague el nonce a los <script> inline auto-generados por Next.js
+        // (RSC bootstrap, hydration). Con Next.js 16 standalone, los scripts
+        // auto-inyectados no reciben el nonce vía headers(), así que la única
+        // forma de habilitarlos sin unsafe-inline es configurar useServerInsertedHTML
+        // + getNonce() en app/layout.tsx para cada <Script> y rehacer el build.
+        // Mientras tanto, permitimos inline pero bloqueamos todo lo demás:
+        // - connect-src limita a qué dominios puede fetchear el cliente
+        // - frame-ancestors 'none' bloquea clickjacking
+        // - object-src 'none' bloquea plugins (Flash/Java)
+        // - form-action 'self' bloquea form-submit a otros orígenes
+        `script-src 'self' 'unsafe-inline'`,
         `style-src 'self' 'unsafe-inline'`,
         `img-src 'self' data: blob:`,
         `font-src 'self' data:`,
@@ -84,9 +95,10 @@ export function middleware(request: NextRequest) {
     const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
     const csp = buildProdCsp(nonce);
 
+    // Mantenemos x-nonce para que cualquier <Script> que use useServerInsertedHTML
+    // pueda leerlo si se reactiva la política estricta en el futuro.
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set("x-nonce", nonce);
-    requestHeaders.set("content-security-policy", csp);
 
     const response = NextResponse.next({ request: { headers: requestHeaders } });
     response.headers.set("content-security-policy", csp);

@@ -11,13 +11,14 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { payments, invoices, patients, type Payment } from "@/lib/mock-data"
-import { Search, Plus, CreditCard, Banknote, Building2, Wallet, Calendar } from "lucide-react"
+import { Search, Plus, CreditCard, Banknote, Building2, Wallet, Calendar, FileText } from "lucide-react"
 import { Label } from "@/components/ui/label"
 
 const methodConfig: Record<Payment["method"], { label: string; icon: React.ReactNode }> = {
   cash: { label: "Efectivo", icon: <Banknote className="h-4 w-4" /> },
   card: { label: "Tarjeta", icon: <CreditCard className="h-4 w-4" /> },
   transfer: { label: "Transferencia", icon: <Building2 className="h-4 w-4" /> },
+  check: { label: "Cheque", icon: <FileText className="h-4 w-4" /> },
   insurance: { label: "Seguro", icon: <Wallet className="h-4 w-4" /> },
 }
 
@@ -29,11 +30,10 @@ export default function PaymentsPage() {
   const filteredPayments = useMemo(() => {
     return payments
       .filter((pay) => {
-        const invoice = invoices.find((i) => i.id === pay.invoiceId)
-        const patient = patients.find((p) => p.id === invoice?.patientId)
         const matchesSearch =
-          pay.receiptNumber.toLowerCase().includes(search.toLowerCase()) ||
-          patient?.name.toLowerCase().includes(search.toLowerCase())
+          pay.paymentNumber.toLowerCase().includes(search.toLowerCase()) ||
+          pay.payerPayee.toLowerCase().includes(search.toLowerCase()) ||
+          (pay.referenceNumber?.toLowerCase().includes(search.toLowerCase()) ?? false)
         const matchesMethod = methodFilter === "all" || pay.method === methodFilter
         return matchesSearch && matchesMethod
       })
@@ -131,6 +131,7 @@ export default function PaymentsPage() {
                     <SelectItem value="cash">Efectivo</SelectItem>
                     <SelectItem value="card">Tarjeta</SelectItem>
                     <SelectItem value="transfer">Transferencia</SelectItem>
+                    <SelectItem value="check">Cheque</SelectItem>
                     <SelectItem value="insurance">Seguro</SelectItem>
                   </SelectContent>
                 </Select>
@@ -140,9 +141,8 @@ export default function PaymentsPage() {
           <CardContent>
             <div className="space-y-3">
               {filteredPayments.map((pay) => {
-                const invoice = invoices.find((i) => i.id === pay.invoiceId)
-                const patient = patients.find((p) => p.id === invoice?.patientId)
                 const config = methodConfig[pay.method]
+                const isPatient = pay.category === "patient"
                 return (
                   <div key={pay.id} className="flex items-center gap-4 rounded-lg border p-4">
                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-success/10 text-success">
@@ -150,11 +150,15 @@ export default function PaymentsPage() {
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium">{patient?.name}</span>
+                        <span className="font-medium">{pay.payerPayee}</span>
                         <Badge variant="outline">{config.label}</Badge>
+                        <Badge variant={isPatient ? "default" : "secondary"}>
+                          {isPatient ? "Paciente" : "Proveedor"}
+                        </Badge>
                       </div>
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span>Recibo: {pay.receiptNumber}</span>
+                        <span>Pago: {pay.paymentNumber}</span>
+                        {pay.referenceNumber && <span>Ref: {pay.referenceNumber}</span>}
                         <span className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
                           {new Date(pay.date).toLocaleDateString("es-GT")}
@@ -163,7 +167,7 @@ export default function PaymentsPage() {
                     </div>
                     <div className="text-right">
                       <p className="text-lg font-bold text-success">Q{pay.amount.toLocaleString()}</p>
-                      <p className="text-sm text-muted-foreground">Factura: {invoice?.invoiceNumber}</p>
+                      <p className="text-sm text-muted-foreground capitalize">{pay.status}</p>
                     </div>
                   </div>
                 )
@@ -242,6 +246,7 @@ function PaymentForm({ onClose }: { onClose: () => void }) {
               <SelectItem value="cash">Efectivo</SelectItem>
               <SelectItem value="card">Tarjeta</SelectItem>
               <SelectItem value="transfer">Transferencia</SelectItem>
+              <SelectItem value="check">Cheque</SelectItem>
               <SelectItem value="insurance">Seguro</SelectItem>
             </SelectContent>
           </Select>

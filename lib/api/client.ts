@@ -1,6 +1,15 @@
 /**
  * API Client
  * Centralized HTTP client for all API calls
+ *
+ * Auth lifecycle:
+ *   - 401 from the backend triggers a single in-flight refresh.
+ *   - On successful refresh, BOTH access and refresh tokens are updated
+ *     (the backend rotates refresh tokens on every /auth/refresh call).
+ *   - If the refresh itself fails, the client dispatches a `auth:expired`
+ *     custom event. The AuthProvider listens for it, clears local state,
+ *     shows a toast, and redirects to /login. The caller never sees an
+ *     "error" toast for a session expiration.
  */
 
 import { API_CONFIG, ApiError, ApiRequestConfig, ApiResponse } from "./config";
@@ -9,6 +18,12 @@ import { getCookie, setCookie, deleteCookie } from "@/lib/utils/cookies";
 const ACCESS_TOKEN_KEY = "access_token";
 const REFRESH_TOKEN_KEY = "refresh_token";
 const USER_KEY = "user_data";
+
+/**
+ * Custom event fired when the session is gone for good and the user
+ * must log in again. The AuthProvider catches it and handles the UX.
+ */
+export const AUTH_EXPIRED_EVENT = "auth:expired";
 
 function buildQueryString(
     params: Record<string, string | number | boolean | undefined>
@@ -27,10 +42,13 @@ function buildQueryString(
  * Attempts to refresh the access token exactly once per 401 wave.
  * Concurrent 401s share the same in-flight promise so we don't hammer
  * the /auth/refresh endpoint.
+ *
+ * Returns the new access token, or null if the refresh failed
+ * (caller should then dispatch the auth:expired event).
  */
-let refreshPromise: Promise<string | null> | null = null;
+let refreshPromise: Promise<{ access: string; refresh: string; expiresIn: number; refreshExpiresIn: number } | null> | null = null;
 
-async function tryRefreshToken(): Promise<string | null> {
+export async function tryRefreshToken(): Promise<{ access: string; refresh: string; expiresIn: number; refreshExpiresIn: number } | null> {
     if (refreshPromise) return refreshPromise;
 
     refreshPromise = (async () => {
@@ -47,26 +65,38 @@ async function tryRefreshToken(): Promise<string | null> {
             if (!response.ok) return null;
 
             const payload = (await response.json()) as {
-                data?: { accessToken?: string; refreshToken?: string };
+                data?: {
+                    accessToken?: string;
+                    refreshToken?: string;
+                    expiresIn?: number;
+                    refreshExpiresIn?: number;
+                };
             };
+
             const newAccess = payload.data?.accessToken;
             const newRefresh = payload.data?.refreshToken;
-            if (!newAccess) return null;
+            if (!newAccess || !newRefresh) return null;
 
             const secure = process.env.NODE_ENV === "production";
+            // Use refreshExpiresIn for the access token cookie too, so it
+            // doesn't expire before its actual JWT lifetime.
             setCookie(ACCESS_TOKEN_KEY, newAccess, {
-                maxAge: 60 * 60 * 24,
+                maxAge: payload.data?.expiresIn ?? 60 * 60 * 8,
                 secure,
                 sameSite: "strict",
             });
-            if (newRefresh) {
-                setCookie(REFRESH_TOKEN_KEY, newRefresh, {
-                    maxAge: 60 * 60 * 24 * 30,
-                    secure,
-                    sameSite: "strict",
-                });
-            }
-            return newAccess;
+            setCookie(REFRESH_TOKEN_KEY, newRefresh, {
+                maxAge: payload.data?.refreshExpiresIn ?? 60 * 60 * 24 * 7,
+                secure,
+                sameSite: "strict",
+            });
+
+            return {
+                access: newAccess,
+                refresh: newRefresh,
+                expiresIn: payload.data?.expiresIn ?? 60 * 60 * 8,
+                refreshExpiresIn: payload.data?.refreshExpiresIn ?? 60 * 60 * 24 * 7,
+            };
         } catch {
             return null;
         }
@@ -84,9 +114,9 @@ function forceLogout() {
     deleteCookie(ACCESS_TOKEN_KEY);
     deleteCookie(REFRESH_TOKEN_KEY);
     deleteCookie(USER_KEY);
-    if (window.location.pathname !== "/login") {
-        window.location.assign("/login");
-    }
+    // Dispatch a custom event; the AuthProvider reacts by clearing state,
+    // showing a toast and redirecting to /login?reason=expired.
+    window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT));
 }
 
 async function executeRequest(
@@ -129,12 +159,16 @@ export async function apiClient<T>(
         response = await executeRequest(url, method, body, headers, token);
 
         if (response.status === 401 && !isAuthEndpoint) {
-            const newToken = await tryRefreshToken();
-            if (newToken) {
-                token = newToken;
+            const refreshed = await tryRefreshToken();
+            if (refreshed) {
+                token = refreshed.access;
                 response = await executeRequest(url, method, body, headers, token);
             } else {
                 forceLogout();
+                // The AuthProvider is the one that will navigate to /login.
+                // We surface a sentinel error so the caller can still detect
+                // that the call didn't succeed (e.g. to cancel a loading state),
+                // but it's not a generic "Error" the way the user used to see.
                 throw new ApiError("Sesión expirada", 401, null);
             }
         }
@@ -173,3 +207,8 @@ export const api = {
     delete: <T>(endpoint: string) =>
         apiClient<T>(endpoint, { method: "DELETE" }),
 };
+
+// Re-export so the AuthProvider's proactive-refresh timer can call it
+// from outside the module without re-importing the function reference
+// (which lives behind a closure to share the in-flight promise).
+// (tryRefreshToken is already exported above with the function declaration.)

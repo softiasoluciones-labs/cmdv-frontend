@@ -20,6 +20,10 @@ export interface AuthUser {
 export interface LoginResponse {
     accessToken: string;
     refreshToken: string;
+    /** TTL of the access token in seconds. */
+    expiresIn: number;
+    /** TTL of the refresh token in seconds. */
+    refreshExpiresIn: number;
     user: AuthUser;
 }
 
@@ -29,5 +33,8 @@ export interface RefreshTokenRequest {
 
 export interface RefreshTokenResponse {
     accessToken: string;
+    /** New refresh token issued by the backend (rotation). */
     refreshToken: string;
+    expiresIn: number;
+    refreshExpiresIn: number;
 }
