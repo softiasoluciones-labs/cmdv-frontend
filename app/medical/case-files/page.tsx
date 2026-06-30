@@ -23,7 +23,7 @@ import {
   Search, Plus, Edit, Eye, Download, Printer, CheckCircle, XCircle, Clock,
   FileText, User, BedDouble, DollarSign, AlertTriangle, Stethoscope,
   ClipboardCheck, RefreshCw, ArrowRightLeft, Calendar, Building, Activity,
-  TrendingUp, MoreVertical, FilePlus, Shield, Heart, Loader2, Package,
+  TrendingUp, MoreVertical, FilePlus, Shield, Heart, Loader2, Package, Receipt,
 } from "lucide-react"
 import { useCaseFile } from "@/hooks/medical-hooks/use-casefile"
 import {
@@ -483,6 +483,14 @@ const handleSubmitEdit = async () => {
                                   <>
                                     <Button
                                       variant="ghost" size="icon"
+                                      onClick={() => router.push(`/medical/case-files/${row.id}/cargos`)}
+                                      title="Ver cargos"
+                                      className="text-orange-600 hover:text-orange-700"
+                                    >
+                                      <Receipt className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost" size="icon"
                                       onClick={() => handleEditCase(row)}
                                       title="Editar expediente"
                                     >
@@ -517,6 +525,9 @@ const handleSubmitEdit = async () => {
                                     <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                                     <DropdownMenuItem onClick={() => handleViewCase(row)}>
                                       <Eye className="mr-2 h-4 w-4" />Ver Detalles
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => router.push(`/medical/case-files/${row.id}/cargos`)}>
+                                      <Receipt className="mr-2 h-4 w-4" />Cargos
                                     </DropdownMenuItem>
                                     {isActive && (
                                       <>
@@ -669,19 +680,19 @@ const handleSubmitEdit = async () => {
           Dialog: VER DETALLE
       ═══════════════════════════════════════════════════════════════════════ */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh]">
+        <DialogContent className="max-w-4xl max-h-[90vh] p-0 gap-0 overflow-hidden">
           {selectedCase && (
             <>
-              <DialogHeader>
+              <DialogHeader className="px-6 pt-6 pb-4 border-b">
                 <DialogTitle>Detalle del Expediente</DialogTitle>
-                <CardDescription className="pt-1">
+                <CardDescription>
                   <span className="font-mono">{selectedCase.case_number}</span>
                   {" · "}
                   <span className="font-medium">{selectedCase.patient_name}</span>
                 </CardDescription>
               </DialogHeader>
 
-              <ScrollArea className="h-[68vh] pr-4">
+              <ScrollArea className="h-[64vh] px-6 py-4">
                 {isDialogLoading ? (
                   <div className="space-y-4 py-4">
                     <Skeleton className="h-40 w-full" />
@@ -1018,7 +1029,7 @@ const handleSubmitEdit = async () => {
                 )}
               </ScrollArea>
 
-              <DialogFooter>
+              <DialogFooter className="px-6 pb-6 pt-4 border-t gap-2 sm:flex-row">
                 <Button variant="outline" onClick={() => setIsDetailOpen(false)}>Cerrar</Button>
                 {selectedCaseFile && isActiveCaseStatus(selectedCaseFile.case_status) && (
                   <>
@@ -1042,15 +1053,15 @@ const handleSubmitEdit = async () => {
           Dialog: EDITAR EXPEDIENTE
       ═══════════════════════════════════════════════════════════════════════ */}
       <Dialog open={isEditOpen} onOpenChange={open => { if (!isSubmitting) setIsEditOpen(open) }}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden">
           {selectedCase && (
             <>
-              <DialogHeader className="pb-4 border-b">
+              <DialogHeader className="px-6 pt-6 pb-4 border-b">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100">
                     <Edit className="h-5 w-5 text-blue-600" />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <DialogTitle>Editar Expediente</DialogTitle>
                     <CardDescription className="flex items-center gap-2 pt-0.5">
                       <span className="font-mono text-xs">{selectedCase.case_number}</span>
@@ -1061,7 +1072,7 @@ const handleSubmitEdit = async () => {
                 </div>
               </DialogHeader>
 
-              <div className="space-y-5 py-4">
+              <div className="space-y-5 px-6 py-5">
                 <div className="space-y-2">
                   <Label htmlFor="edit-initial-diag" className="text-sm font-medium flex items-center gap-1.5">
                     <ClipboardCheck className="h-3.5 w-3.5 text-muted-foreground" />
@@ -1104,7 +1115,7 @@ const handleSubmitEdit = async () => {
                 </div>
               </div>
 
-              <DialogFooter className="pt-4 border-t gap-2">
+              <DialogFooter className="px-6 pb-6 pt-4 border-t gap-2 sm:flex-row">
                 <Button
                   variant="outline"
                   onClick={() => setIsEditOpen(false)}
@@ -1135,15 +1146,15 @@ const handleSubmitEdit = async () => {
           Dialog: TRANSFERIR CASO
       ═══════════════════════════════════════════════════════════════════════ */}
       <Dialog open={isTransferOpen} onOpenChange={open => { if (!isSubmitting) setIsTransferOpen(open) }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md p-0 gap-0 overflow-hidden">
           {selectedCase && (
             <>
-              <DialogHeader className="pb-4 border-b">
+              <DialogHeader className="px-6 pt-6 pb-4 border-b">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-100">
                     <ArrowRightLeft className="h-5 w-5 text-orange-600" />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <DialogTitle>Transferir Expediente</DialogTitle>
                     <CardDescription className="flex items-center gap-2 pt-0.5">
                       <span className="font-mono text-xs">{selectedCase.case_number}</span>
@@ -1154,7 +1165,7 @@ const handleSubmitEdit = async () => {
                 </div>
               </DialogHeader>
 
-              <div className="space-y-4 py-4">
+              <div className="space-y-4 px-6 py-5">
                 {isDialogLoading ? (
                   <div className="flex items-center justify-center py-10 gap-3 text-muted-foreground">
                     <Loader2 className="h-5 w-5 animate-spin" />
@@ -1211,7 +1222,7 @@ const handleSubmitEdit = async () => {
                 )}
               </div>
 
-              <DialogFooter className="pt-4 border-t gap-2">
+              <DialogFooter className="px-6 pb-6 pt-4 border-t gap-2 sm:flex-row">
                 <Button
                   variant="outline"
                   onClick={() => setIsTransferOpen(false)}
@@ -1244,15 +1255,15 @@ const handleSubmitEdit = async () => {
           Dialog: CERRAR CASO
       ═══════════════════════════════════════════════════════════════════════ */}
       <Dialog open={isCloseOpen} onOpenChange={open => { if (!isSubmitting) setIsCloseOpen(open) }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md p-0 gap-0 overflow-hidden">
           {selectedCase && (
             <>
-              <DialogHeader className="pb-4 border-b">
+              <DialogHeader className="px-6 pt-6 pb-4 border-b">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal-100">
                     <CheckCircle className="h-5 w-5 text-teal-600" />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <DialogTitle>Cerrar Expediente</DialogTitle>
                     <CardDescription className="flex items-center gap-2 pt-0.5">
                       <span className="font-mono text-xs">{selectedCase.case_number}</span>
@@ -1263,7 +1274,7 @@ const handleSubmitEdit = async () => {
                 </div>
               </DialogHeader>
 
-              <div className="space-y-4 py-4">
+              <div className="space-y-4 px-6 py-5">
                 {isDialogLoading ? (
                   <div className="flex items-center justify-center py-10 gap-3 text-muted-foreground">
                     <Loader2 className="h-5 w-5 animate-spin" />
@@ -1362,7 +1373,7 @@ const handleSubmitEdit = async () => {
                 )}
               </div>
 
-              <DialogFooter className="pt-4 border-t gap-2">
+              <DialogFooter className="px-6 pb-6 pt-4 border-t gap-2 sm:flex-row">
                 <Button
                   variant="outline"
                   onClick={() => setIsCloseOpen(false)}

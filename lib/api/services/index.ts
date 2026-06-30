@@ -14,3 +14,4 @@ export { paymentSupplierService } from "./inventory-services/paymentSupplierServ
 
 export { patientService } from "./medical-services/patientService";
 export { caseFileService } from "./medical-services/caseFileService";
+export { caseProductService } from "./medical-services/caseProductService";
