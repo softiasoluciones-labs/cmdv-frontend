@@ -12,6 +12,7 @@ export enum DoctorType {
 export interface DoctorResponse {
   id: string;
   user_id?: string;
+  full_name?: string;
   medical_license: string;
   specialty_id?: string;
   doctor_type: DoctorType;
@@ -24,8 +25,6 @@ export interface DoctorResponse {
   is_active?: boolean;
   created_at?: string;
   updated_at?: string;
-  first_name?: string;
-  last_name?: string;
   specialty_name?: string;
 }
 
@@ -34,11 +33,11 @@ export interface DoctorResponse {
  */
 export interface DoctorListResponse {
   id: string;
+  full_name?: string;
   medical_license: string;
   doctor_type: DoctorType;
+  consultation_fee?: number;
   is_active?: boolean;
-  first_name?: string;
-  last_name?: string;
   specialty_name?: string;
 }
 

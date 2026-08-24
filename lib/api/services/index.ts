@@ -15,3 +15,12 @@ export { paymentSupplierService } from "./inventory-services/paymentSupplierServ
 export { patientService } from "./medical-services/patientService";
 export { caseFileService } from "./medical-services/caseFileService";
 export { caseProductService } from "./medical-services/caseProductService";
+export { caseServiceService } from "./medical-services/caseServiceService";
+export { caseRoomService } from "./medical-services/caseRoomService";
+export { casePackageAssignmentService } from "./medical-services/casePackageAssignmentService";
+
+export { invoiceService } from "./billing-services/invoiceService";
+export { paymentService } from "./billing-services/paymentService";
+export { discountService } from "./billing-services/discountService";
+export { cashSessionService } from "./billing-services/cashSessionService";
+export { taxInvoiceService } from "./billing-services/taxInvoiceService";

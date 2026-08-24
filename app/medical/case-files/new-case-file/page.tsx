@@ -622,7 +622,7 @@ export default function NewCaseFilePage() {
                           ) : (
                             doctors.map(doc => (
                               <SelectItem key={doc.id} value={doc.id}>
-                                {doc.first_name} {doc.last_name}
+                                {doc.full_name ?? "Médico"}
                                 {doc.specialty_name ? ` - ${doc.specialty_name}` : ""}
                               </SelectItem>
                             ))

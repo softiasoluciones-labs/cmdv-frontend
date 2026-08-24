@@ -23,11 +23,14 @@ import {
 } from "lucide-react";
 import { useCaseFile } from "@/hooks/medical-hooks/use-casefile";
 import { useCaseProducts } from "@/hooks/medical-hooks/use-case-products";
+import { useCaseServices } from "@/hooks/medical-hooks/use-case-services";
+import { useCaseRooms } from "@/hooks/medical-hooks/use-case-rooms";
+import { useCasePackageAssignments } from "@/hooks/medical-hooks/use-case-package-assignments";
 import { ChargesTable } from "@/components/medical/charges/charges-table";
-import { ApplyProductForm } from "@/components/medical/charges/apply-product-form";
+import { ApplyChargeForm } from "@/components/medical/charges/apply-charge-form";
 import { BillingSummaryCard } from "@/components/medical/charges/billing-summary-card";
 import { ApiError } from "@/lib/api/config";
-import { CaseProduct } from "@/lib/api/types/medical-types/case-product.types";
+import { ChargeRow, ChargeType, toChargeRows } from "@/lib/api/types/medical-types/charge-row.types";
 
 const currency = new Intl.NumberFormat("es-GT", {
   style: "currency",
@@ -45,14 +48,37 @@ export default function CargosPage() {
     fetchCaseFileById,
     isLoading: isLoadingCase,
   } = useCaseFile();
+
   const {
     caseProducts, billingSummary,
-    isLoading, isMutating, error,
-    refresh, applyProduct, voidProduct, clearError,
+    isLoading: isLoadingProducts, isMutating: isMutatingProducts, error: productsError,
+    applyProduct, voidProduct, clearError: clearProductsError,
   } = useCaseProducts(caseFileId);
+  const {
+    caseServices,
+    isLoading: isLoadingServices, isMutating: isMutatingServices, error: servicesError,
+    applyService, voidService, clearError: clearServicesError,
+  } = useCaseServices(caseFileId);
+  const {
+    caseRooms,
+    isLoading: isLoadingRooms, isMutating: isMutatingRooms, error: roomsError,
+    applyRoom, voidRoom, clearError: clearRoomsError,
+  } = useCaseRooms(caseFileId);
+  const {
+    casePackages,
+    isLoading: isLoadingPackages, isMutating: isMutatingPackages, error: packagesError,
+    applyPackageAssignment, voidPackageAssignment, clearError: clearPackagesError,
+  } = useCasePackageAssignments(caseFileId);
+
+  const isLoading = isLoadingProducts || isLoadingServices || isLoadingRooms || isLoadingPackages;
+  const isMutating = isMutatingProducts || isMutatingServices || isMutatingRooms || isMutatingPackages;
+  const error = productsError || servicesError || roomsError || packagesError;
+  const clearError = () => {
+    clearProductsError(); clearServicesError(); clearRoomsError(); clearPackagesError();
+  };
 
   const [isApplyOpen, setIsApplyOpen] = useState(false);
-  const [chargeToVoid, setChargeToVoid] = useState<CaseProduct | null>(null);
+  const [chargeToVoid, setChargeToVoid] = useState<ChargeRow | null>(null);
   const [voidReason, setVoidReason] = useState("");
   const [voidError, setVoidError] = useState<string | null>(null);
   const [isVoidingLocal, setIsVoidingLocal] = useState(false);
@@ -68,12 +94,25 @@ export default function CargosPage() {
     return () => clearTimeout(t);
   }, [successMsg]);
 
+  const charges = useMemo(
+    () => toChargeRows(caseProducts, caseServices, caseRooms, casePackages),
+    [caseProducts, caseServices, caseRooms, casePackages]
+  );
+
   const totals = useMemo(() => {
-    const active = caseProducts.filter(c => !c.is_voided);
+    const active = charges.filter(c => !c.is_voided);
     const subtotal = active.reduce((s, c) => s + c.total_price, 0);
-    const voided = caseProducts.filter(c => c.is_voided).length;
+    const voided = charges.filter(c => c.is_voided).length;
     return { activeCount: active.length, subtotal, voided };
-  }, [caseProducts]);
+  }, [charges]);
+
+  const availableTypes = useMemo<ChargeType[]>(() => {
+    const admissionType = selectedCaseFile?.admissionType;
+    const types: ChargeType[] = ["product", "service"];
+    if (admissionType?.requires_package) types.push("package");
+    if (admissionType?.requires_hospitalization) types.push("room");
+    return types;
+  }, [selectedCaseFile]);
 
   if (!caseFileId) {
     return (
@@ -91,8 +130,23 @@ export default function CargosPage() {
     );
   }
 
-  const handleApply = async (data: Parameters<typeof applyProduct>[0]) => {
+  const handleApplyProduct = async (data: Parameters<typeof applyProduct>[0]) => {
     await applyProduct(data);
+    setSuccessMsg("Cargo registrado correctamente");
+    setIsApplyOpen(false);
+  };
+  const handleApplyService = async (data: Parameters<typeof applyService>[0]) => {
+    await applyService(data);
+    setSuccessMsg("Cargo registrado correctamente");
+    setIsApplyOpen(false);
+  };
+  const handleApplyRoom = async (data: Parameters<typeof applyRoom>[0]) => {
+    await applyRoom(data);
+    setSuccessMsg("Cargo registrado correctamente");
+    setIsApplyOpen(false);
+  };
+  const handleApplyPackage = async (data: Parameters<typeof applyPackageAssignment>[0]) => {
+    await applyPackageAssignment(data);
     setSuccessMsg("Cargo registrado correctamente");
     setIsApplyOpen(false);
   };
@@ -106,7 +160,11 @@ export default function CargosPage() {
     setIsVoidingLocal(true);
     setVoidError(null);
     try {
-      await voidProduct(chargeToVoid.id, { void_reason: voidReason.trim() });
+      const payload = { void_reason: voidReason.trim() };
+      if (chargeToVoid.charge_type === "product") await voidProduct(chargeToVoid.id, payload);
+      else if (chargeToVoid.charge_type === "service") await voidService(chargeToVoid.id, payload);
+      else if (chargeToVoid.charge_type === "room") await voidRoom(chargeToVoid.id, payload);
+      else if (chargeToVoid.charge_type === "package") await voidPackageAssignment(chargeToVoid.id, payload);
       setSuccessMsg("Cargo anulado correctamente");
       setChargeToVoid(null);
       setVoidReason("");
@@ -165,7 +223,7 @@ export default function CargosPage() {
                   </span>
                 </span>
               ) : (
-                "Gestión de cargos (productos) aplicados al expediente"
+                "Gestión de cargos del expediente"
               )}
             </div>
           </div>
@@ -233,7 +291,7 @@ export default function CargosPage() {
                 <Wallet className="h-5 w-5 text-success" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Subtotal de cargos (productos)</p>
+                <p className="text-xs text-muted-foreground">Subtotal de cargos</p>
                 <p className="text-xl font-bold tabular-nums text-success">
                   {currency.format(totals.subtotal)}
                 </p>
@@ -263,12 +321,12 @@ export default function CargosPage() {
                   Cargos registrados
                 </CardTitle>
                 <CardDescription>
-                  Lista completa de productos aplicados. Los anulados se conservan para trazabilidad.
+                  Lista completa de cargos aplicados (insumos, servicios, consultas, paquetes y habitaciones). Los anulados se conservan para trazabilidad.
                 </CardDescription>
               </CardHeader>
               <CardContent className="px-6">
                 <ChargesTable
-                  charges={caseProducts}
+                  charges={charges}
                   isLoading={isLoading}
                   isVoiding={isVoidingLocal || isMutating}
                   onVoid={charge => {
@@ -282,7 +340,7 @@ export default function CargosPage() {
           </TabsContent>
 
           <TabsContent value="summary">
-            <BillingSummaryCard summary={billingSummary} isLoading={isLoading} />
+            <BillingSummaryCard summary={billingSummary} isLoading={isLoadingProducts} />
           </TabsContent>
         </Tabs>
       </div>
@@ -317,8 +375,12 @@ export default function CargosPage() {
           </SheetHeader>
 
           <div className="flex-1 overflow-y-auto px-6 py-5">
-            <ApplyProductForm
-              onSubmit={handleApply}
+            <ApplyChargeForm
+              availableTypes={availableTypes}
+              onSubmitProduct={handleApplyProduct}
+              onSubmitService={handleApplyService}
+              onSubmitRoom={handleApplyRoom}
+              onSubmitPackage={handleApplyPackage}
               onCancel={() => setIsApplyOpen(false)}
               isSubmitting={isMutating}
             />
@@ -352,14 +414,12 @@ export default function CargosPage() {
             {chargeToVoid && (
               <div className="rounded-md border bg-muted/30 p-3 text-sm space-y-1">
                 <div className="flex justify-between gap-2">
-                  <span className="text-muted-foreground">Producto:</span>
-                  <span className="font-medium">{chargeToVoid.product_name}</span>
+                  <span className="text-muted-foreground">Cargo:</span>
+                  <span className="font-medium">{chargeToVoid.description}</span>
                 </div>
                 <div className="flex justify-between gap-2">
                   <span className="text-muted-foreground">Cantidad:</span>
-                  <span className="font-medium tabular-nums">
-                    {chargeToVoid.quantity} {chargeToVoid.unit_of_measure}
-                  </span>
+                  <span className="font-medium tabular-nums">{chargeToVoid.quantity}</span>
                 </div>
                 <div className="flex justify-between gap-2">
                   <span className="text-muted-foreground">Total:</span>

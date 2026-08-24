@@ -46,6 +46,8 @@ import {
   Bell,
   Megaphone,
   BookUser,
+  Tag,
+  Wallet,
 } from "lucide-react";
 
 const STORAGE_KEY = "sidebar-expanded-items";
@@ -121,6 +123,16 @@ const navigation: NavItem[] = [
     children: [
       { title: "Facturas", href: "/billing/invoices", icon: FileText },
       { title: "Pagos", href: "/billing/payments", icon: CreditCard },
+      {
+        title: "Sesiones de caja",
+        href: "/billing/cash-sessions",
+        icon: Wallet,
+      },
+      {
+        title: "Catálogo de descuentos",
+        href: "/billing/discount-catalog",
+        icon: Tag,
+      },
       { title: "Reportes", href: "/reports", icon: Activity },
     ],
   },

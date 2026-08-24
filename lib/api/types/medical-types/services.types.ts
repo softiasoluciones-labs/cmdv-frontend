@@ -15,6 +15,7 @@ export interface MedicalService {
     requires_preparation: boolean;
     preparation_instructions: string;
     is_active: boolean;
+    use_doctor_consultation_fee?: boolean;
     service_type?: ServiceType;
 }
 
