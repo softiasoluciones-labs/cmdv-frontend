@@ -133,7 +133,8 @@ export default function InvoiceDetailPage() {
     invoice.status !== InvoiceStatus.PAID;
   const canApplyDiscount =
     invoice.status === InvoiceStatus.DRAFT ||
-    invoice.status === InvoiceStatus.CONFIRMED;
+    invoice.status === InvoiceStatus.CONFIRMED ||
+    invoice.status === InvoiceStatus.PARTIALLY_PAID;
   const canReceivePayment =
     invoice.status === InvoiceStatus.CONFIRMED ||
     invoice.status === InvoiceStatus.PARTIALLY_PAID;

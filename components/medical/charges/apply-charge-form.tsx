@@ -20,6 +20,7 @@ import { useServices } from "@/hooks/medical-hooks/use-services";
 import { useRooms } from "@/hooks/medical-hooks/use-rooms";
 import { usePackages } from "@/hooks/medical-hooks/use-packages";
 import { useDoctors } from "@/hooks/medical-hooks/use-doctors";
+import { useAuth } from "@/hooks/auth-hooks/use-auth";
 import { ApiError } from "@/lib/api/config";
 import { ApplyCaseProductRequest } from "@/lib/api/types/medical-types/case-product.types";
 import { ApplyCaseServiceRequest } from "@/lib/api/types/medical-types/case-service.types";
@@ -32,6 +33,8 @@ const currency = new Intl.NumberFormat("es-GT", {
   currency: "GTQ",
   minimumFractionDigits: 2,
 });
+
+const MANUAL_PRICE_ROLES = new Set(["billing_staff", "admin", "super_admin"]);
 
 const TYPE_OPTIONS: Record<ChargeType, { label: string; icon: React.ElementType }> = {
   product: { label: "Insumo", icon: Package },
@@ -72,10 +75,14 @@ export function ApplyChargeForm({
   const [productQuantity, setProductQuantity] = useState(1);
 
   // ── Servicio / Consulta ────────────────────────────────────────────────
-  const { services, isLoading: isLoadingServices } = useServices({ isActive: true });
+  const { user } = useAuth();
+  const canRegisterManualFees = !!user && MANUAL_PRICE_ROLES.has(user.role);
+  const { services: allServices, isLoading: isLoadingServices } = useServices({ isActive: true });
+  const services = allServices.filter(s => s.pricing_mode !== "manual" || canRegisterManualFees);
   const [serviceId, setServiceId] = useState("");
   const [serviceQuantity, setServiceQuantity] = useState(1);
   const [serviceDoctorId, setServiceDoctorId] = useState("");
+  const [serviceUnitPrice, setServiceUnitPrice] = useState<number>(0);
   const { doctors, isLoading: isLoadingDoctors } = useDoctors();
 
   // ── Habitación ──────────────────────────────────────────────────────────
@@ -106,8 +113,10 @@ export function ApplyChargeForm({
 
   const selectedService = services.find(s => s.id === serviceId);
   const selectedDoctorForService = doctors.find(d => d.id === serviceDoctorId);
-  const consultationPricePreview = selectedService?.use_doctor_consultation_fee
-    ? selectedDoctorForService?.consultation_fee ?? Number(selectedService.base_price)
+  const isDoctorFeeService = selectedService?.pricing_mode === "doctor_fee";
+  const isManualPriceService = selectedService?.pricing_mode === "manual";
+  const consultationPricePreview = isDoctorFeeService
+    ? selectedDoctorForService?.consultation_fee ?? Number(selectedService!.base_price)
     : undefined;
 
   const selectedPackage = packages.find(p => p.id === packageId);
@@ -117,7 +126,7 @@ export function ApplyChargeForm({
 
   const resetForm = () => {
     setProductId(""); setProductSearch(""); setWarehouseId(""); setProductQuantity(1);
-    setServiceId(""); setServiceQuantity(1); setServiceDoctorId("");
+    setServiceId(""); setServiceQuantity(1); setServiceDoctorId(""); setServiceUnitPrice(0);
     setRoomId("");
     setPackageId(""); setPackageDoctorId(""); setDoctorTypeUsed("internal");
     setNotes("");
@@ -140,13 +149,18 @@ export function ApplyChargeForm({
         });
       } else if (chargeType === "service") {
         if (!serviceId) return setError("Selecciona un servicio");
-        if (selectedService?.use_doctor_consultation_fee && !serviceDoctorId) {
-          return setError("Selecciona el médico que atiende la consulta");
+        if ((isDoctorFeeService || isManualPriceService) && !serviceDoctorId) {
+          return setError("Selecciona el médico");
+        }
+        if (isManualPriceService) {
+          if (!serviceUnitPrice || serviceUnitPrice <= 0) return setError("Indica el monto de honorarios");
+          if (!notes.trim()) return setError("Indica la justificación del honorario");
         }
         await onSubmitService({
           service_id: serviceId,
           quantity: serviceQuantity,
           doctor_id: serviceDoctorId || undefined,
+          unit_price: isManualPriceService ? serviceUnitPrice : undefined,
           notes: notes.trim() || undefined,
         });
       } else if (chargeType === "room") {
@@ -311,7 +325,7 @@ export function ApplyChargeForm({
                 ) : (
                   services.map(s => (
                     <SelectItem key={s.id} value={s.id}>
-                      {s.name} {!s.use_doctor_consultation_fee && `— ${currency.format(Number(s.base_price))}`}
+                      {s.name} {(!s.pricing_mode || s.pricing_mode === "catalog") && `— ${currency.format(Number(s.base_price))}`}
                     </SelectItem>
                   ))
                 )}
@@ -319,7 +333,7 @@ export function ApplyChargeForm({
             </Select>
           </div>
 
-          {selectedService?.use_doctor_consultation_fee && (
+          {(isDoctorFeeService || isManualPriceService) && (
             <div className="space-y-2">
               <Label htmlFor="service-doctor" className="text-sm font-medium flex items-center gap-1.5">
                 <User className="h-3.5 w-3.5 text-muted-foreground" />
@@ -341,11 +355,35 @@ export function ApplyChargeForm({
                   )}
                 </SelectContent>
               </Select>
-              {consultationPricePreview !== undefined && (
+              {isDoctorFeeService && consultationPricePreview !== undefined && (
                 <p className="text-xs text-muted-foreground">
                   Precio estimado: <span className="font-medium tabular-nums">{currency.format(consultationPricePreview)}</span>
                 </p>
               )}
+            </div>
+          )}
+
+          {isManualPriceService && (
+            <div className="space-y-2">
+              <Label htmlFor="service-amount" className="text-sm font-medium">
+                Monto de honorarios <span className="text-destructive">*</span>
+              </Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">Q</span>
+                <Input
+                  id="service-amount"
+                  type="number"
+                  min={0.01}
+                  step={0.01}
+                  value={serviceUnitPrice || ""}
+                  onChange={e => setServiceUnitPrice(Number(e.target.value) || 0)}
+                  placeholder="Monto acordado con el médico"
+                  className="pl-7 h-10"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Monto libre indicado por el médico para este caso — no proviene de un catálogo.
+              </p>
             </div>
           )}
 
@@ -359,6 +397,7 @@ export function ApplyChargeForm({
               value={serviceQuantity}
               onChange={e => setServiceQuantity(Number(e.target.value) || 0)}
               className="h-10"
+              disabled={isManualPriceService}
             />
           </div>
         </>
@@ -453,11 +492,15 @@ export function ApplyChargeForm({
 
       <div className="space-y-2">
         <Label htmlFor="notes" className="text-sm font-medium">
-          Notas <span className="text-xs text-muted-foreground font-normal">(opcional)</span>
+          {isManualPriceService ? (
+            <>Justificación del honorario <span className="text-destructive">*</span></>
+          ) : (
+            <>Notas <span className="text-xs text-muted-foreground font-normal">(opcional)</span></>
+          )}
         </Label>
         <Textarea
           id="notes"
-          placeholder="Observaciones sobre la aplicación del cargo..."
+          placeholder={isManualPriceService ? "Explica el motivo del monto acordado con el médico..." : "Observaciones sobre la aplicación del cargo..."}
           value={notes}
           onChange={e => setNotes(e.target.value)}
           rows={3}

@@ -121,6 +121,7 @@ const navigation: NavItem[] = [
     href: "/billing/invoices",
     icon: Receipt,
     children: [
+      { title: "Caja", href: "/billing/caja", icon: Wallet },
       { title: "Facturas", href: "/billing/invoices", icon: FileText },
       { title: "Pagos", href: "/billing/payments", icon: CreditCard },
       {

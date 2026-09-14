@@ -64,7 +64,7 @@ export function toChargeRows(
       id: s.id,
       charge_type: "service",
       description: s.service_name,
-      detail: s.is_consultation && s.doctor_name ? `Dr(a). ${s.doctor_name}` : undefined,
+      detail: s.pricing_mode !== "catalog" && s.doctor_name ? `Dr(a). ${s.doctor_name}` : undefined,
       quantity: s.quantity,
       unit_price: s.unit_price,
       total_price: s.total_price,
